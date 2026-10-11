@@ -25,7 +25,7 @@ router.delete('/communications/templates/:id', requireAuth, admins, asyncRoute(a
 router.get('/communications/campaigns', requireAuth, admins, asyncRoute(async (_req, res) => res.json({ campaigns: await EmailCampaign.find().populate('createdBy', 'fullName').sort({ createdAt: -1 }).limit(100) })))
 router.post('/communications/campaigns', requireAuth, admins, asyncRoute(async (req, res) => {
   const data = parse(z.object({ title: z.string().trim().min(3).max(180), subject: z.string().trim().min(2).max(200), body: z.string().trim().min(2).max(10000), sendInApp: z.boolean().default(true), sendEmail: z.boolean().default(false), scheduledAt: z.coerce.date().optional() }).refine(value => value.sendInApp || value.sendEmail, { message: 'Choose in-app or email delivery.' }), req.body)
-  if (data.sendEmail && (!process.env.EMAIL_API_KEY || !process.env.EMAIL_FROM)) return res.status(503).json({ message: 'Email delivery is not configured. Add EMAIL_API_KEY and EMAIL_FROM to backend/.env.' })
+  if (data.sendEmail && !(process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY)) return res.status(503).json({ message: 'Email delivery is not configured. Add EMAIL_API_KEY to the backend environment.' })
   if (data.scheduledAt && data.scheduledAt <= new Date()) return res.status(400).json({ message: 'Choose a future time, or send the announcement now.' })
   const campaign = await EmailCampaign.create({ ...data, scheduledAt: data.scheduledAt || new Date(), createdBy: req.user._id })
   await audit(req, 'campaign.create', 'EmailCampaign', campaign.id, { title: campaign.title, sendInApp: campaign.sendInApp, sendEmail: campaign.sendEmail, scheduledAt: campaign.scheduledAt })

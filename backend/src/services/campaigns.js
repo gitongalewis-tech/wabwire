@@ -1,15 +1,9 @@
 import { EmailCampaign, Notification, User } from '../models/index.js'
+import { sendEmail } from './email.js'
 
 async function deliverEmail(user, campaign) {
-  const key = process.env.EMAIL_API_KEY
-  const from = process.env.EMAIL_FROM
-  if (!key || !from) throw new Error('Email delivery is not configured.')
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [user.email], subject: campaign.subject, text: campaign.body }),
-  })
-  if (!response.ok) throw new Error(`Email provider returned ${response.status}.`)
+  const result = await sendEmail({ to: user.email, subject: campaign.subject, text: campaign.body })
+  if (!result.sent) throw new Error(result.reason)
 }
 
 export async function dispatchCampaign(campaignId) {
@@ -21,14 +15,16 @@ export async function dispatchCampaign(campaignId) {
   if (!campaign) return
   const recipients = await User.find({ status: 'ACTIVE', membershipStatus: 'ACTIVE' }).select('_id email')
   campaign.recipients = recipients.length
+  if (campaign.sendInApp && recipients.length) {
+    await Notification.insertMany(recipients.map(user => ({ user: user._id, title: campaign.title, message: campaign.body, type: 'announcement', link: '/dashboard/notifications' })), { ordered: false })
+  }
   let delivered = 0
   let failures = 0
-  for (const user of recipients) {
-    if (campaign.sendInApp) {
-      await Notification.create({ user: user._id, title: campaign.title, message: campaign.body, type: 'announcement', link: '/dashboard/notifications' })
-    }
-    if (campaign.sendEmail) {
-      try { await deliverEmail(user, campaign); delivered += 1 } catch { failures += 1 }
+  if (campaign.sendEmail) {
+    for (let offset = 0; offset < recipients.length; offset += 5) {
+      const results = await Promise.allSettled(recipients.slice(offset, offset + 5).map(user => deliverEmail(user, campaign)))
+      delivered += results.filter(result => result.status === 'fulfilled').length
+      failures += results.filter(result => result.status === 'rejected').length
     }
   }
   campaign.emailSent = delivered

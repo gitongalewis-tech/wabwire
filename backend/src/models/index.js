@@ -11,11 +11,17 @@ const userSchema = new Schema({
   county: { type: String, trim: true, maxlength: 80 },
   passwordHash: { type: String, required: true, select: false },
   role: { type: String, enum: ['USER', 'ADMIN', 'SUPER_ADMIN', 'INSTRUCTOR', 'MODERATOR'], default: 'USER', index: true },
+  isDemo: { type: Boolean, default: false, index: true },
   status: { type: String, enum: ['PENDING', 'ACTIVE', 'SUSPENDED'], default: 'PENDING', index: true },
   membershipStatus: { type: String, enum: ['PENDING', 'ACTIVE', 'SUSPENDED'], default: 'PENDING', index: true },
   referralCode: { type: String, required: true, unique: true, index: true },
   referredBy: { type: Schema.Types.ObjectId, ref: 'User', default: null, immutable: true, index: true },
   acceptedPolicies: [{ name: String, version: String, acceptedAt: Date }],
+  emailVerifiedAt: Date,
+  emailVerificationTokenHash: { type: String, select: false },
+  emailVerificationExpiresAt: { type: Date, select: false },
+  passwordResetTokenHash: { type: String, select: false },
+  passwordResetExpiresAt: { type: Date, select: false },
   avatarUrl: { type: String, default: '' },
   lastLoginAt: Date,
 }, { timestamps: true })
@@ -56,8 +62,9 @@ const notificationSchema = new Schema({ user: { type: Schema.Types.ObjectId, ref
 const auditLogSchema = new Schema({ actor: { type: Schema.Types.ObjectId, ref: 'User' }, action: { type: String, required: true }, entityType: String, entityId: String, details: Schema.Types.Mixed, ip: String }, { timestamps: true })
 const systemSettingSchema = new Schema({ key: { type: String, required: true, unique: true }, value: Schema.Types.Mixed, updatedBy: { type: Schema.Types.ObjectId, ref: 'User' } }, { timestamps: true })
 const emailTemplateSchema = new Schema({ name: { type: String, required: true, unique: true, trim: true }, category: { type: String, enum: ['welcome', 'payment', 'membership', 'class', 'event', 'announcement', 'service-request', 'withdrawal', 'custom'], default: 'custom' }, subject: { type: String, required: true, maxlength: 200 }, body: { type: String, required: true, maxlength: 10000 }, active: { type: Boolean, default: true } }, { timestamps: true })
-const emailCampaignSchema = new Schema({ title: { type: String, required: true, maxlength: 180 }, subject: { type: String, required: true, maxlength: 200 }, body: { type: String, required: true, maxlength: 10000 }, sendInApp: { type: Boolean, default: true }, sendEmail: { type: Boolean, default: false }, scheduledAt: Date, status: { type: String, enum: ['SCHEDULED', 'SENDING', 'SENT', 'PARTIAL', 'FAILED', 'CANCELLED'], default: 'SCHEDULED', index: true }, recipients: { type: Number, default: 0 }, emailSent: { type: Number, default: 0 }, failureMessage: String, createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true } }, { timestamps: true })
-const enquirySchema = new Schema({ name: { type: String, required: true, trim: true, maxlength: 120 }, email: { type: String, required: true, trim: true, lowercase: true, maxlength: 254 }, phone: { type: String, trim: true, maxlength: 40 }, service: { type: String, required: true }, message: { type: String, required: true, trim: true, maxlength: 4000 }, status: { type: String, enum: ['new', 'reviewing', 'responded', 'closed'], default: 'new' } }, { timestamps: true })
+const emailCampaignSchema = new Schema({ title: { type: String, required: true, maxlength: 180 }, subject: { type: String, required: true, maxlength: 200 }, body: { type: String, required: true, maxlength: 10000 }, sendInApp: { type: Boolean, default: true }, sendEmail: { type: Boolean, default: false }, scheduledAt: Date, sourceType: { type: String, enum: ['event', 'class'], index: true }, sourceId: { type: Schema.Types.ObjectId }, purpose: { type: String, enum: ['announcement', 'reminder'] }, status: { type: String, enum: ['SCHEDULED', 'SENDING', 'SENT', 'PARTIAL', 'FAILED', 'CANCELLED'], default: 'SCHEDULED', index: true }, recipients: { type: Number, default: 0 }, emailSent: { type: Number, default: 0 }, failureMessage: String, createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true } }, { timestamps: true })
+emailCampaignSchema.index({ sourceType: 1, sourceId: 1, purpose: 1 }, { unique: true, partialFilterExpression: { sourceType: { $exists: true }, sourceId: { $exists: true }, purpose: { $exists: true } } })
+const enquirySchema = new Schema({ name: { type: String, required: true, trim: true, maxlength: 120 }, email: { type: String, required: true, trim: true, lowercase: true, maxlength: 254 }, phone: { type: String, trim: true, maxlength: 40 }, service: { type: String, required: true }, message: { type: String, required: true, trim: true, maxlength: 4000 }, status: { type: String, enum: ['new', 'reviewing', 'responded', 'closed'], default: 'new' }, acknowledgementEmailStatus: { type: String, enum: ['pending', 'sent', 'failed'], default: 'pending' }, acknowledgementEmailError: { type: String, maxlength: 300 }, acknowledgementEmailSentAt: Date }, { timestamps: true })
 
 const getModel = (name, schema) => mongoose.models[name] || model(name, schema)
 export const User = getModel('User', userSchema)

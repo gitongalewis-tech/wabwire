@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import { CommissionLedger, CommissionRule, Membership, Notification, Payment, Referral, User } from '../models/index.js'
+import { sendPaymentConfirmedEmail } from './email.js'
 
 export async function activateVerifiedMembership(paymentId, verifiedBy = null) {
   const session = await mongoose.startSession()
@@ -36,6 +37,12 @@ export async function activateVerifiedMembership(paymentId, verifiedBy = null) {
       activated = true
     })
   } finally { await session.endSession() }
+  if (activated) {
+    try {
+      const receipt = await Payment.findById(paymentId).populate('user', 'fullName email')
+      if (receipt?.user) await sendPaymentConfirmedEmail(receipt.user, receipt)
+    } catch (error) { console.error('Payment confirmation email failed:', error.message) }
+  }
   return activated
 }
 

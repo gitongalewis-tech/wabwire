@@ -64,6 +64,10 @@ Troubleshooting
   permission. Create a replacement key and revoke a key if it may have leaked.
 - A sender/domain error usually means EMAIL_FROM does not match a verified
   domain or the DNS records have not verified yet.
+- With the Resend test sender `onboarding@resend.dev`, Resend only permits
+  delivery to the email address verified as the Resend account owner. Client
+  acknowledgement and member email will fail for other recipients until a
+  Wabwire sending domain is verified and EMAIL_FROM uses that domain.
 - If requests are accepted but mail is not delivered, inspect Resend's email
   logs, bounces, suppressions, and recipient address. The project reports
   accepted send requests; it does not currently reconcile delivery webhooks.

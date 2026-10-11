@@ -1,4 +1,8 @@
-const base = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api/v1').replace(/\/$/, '')
+const configuredBase = import.meta.env.VITE_API_URL
+// Production uses the frontend origin as a same-site API proxy. This keeps
+// auth cookies first-party and avoids browsers blocking a cross-site Vercel cookie.
+const productionBase = configuredBase?.startsWith('/') ? configuredBase : '/api/v1'
+const base = (import.meta.env.PROD ? productionBase : configuredBase || 'http://localhost:4000/api/v1').replace(/\/$/, '')
 
 export async function api(path, options = {}) {
   const response = await fetch(`${base}${path.startsWith('/') ? path : `/${path}`}`, {

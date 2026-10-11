@@ -6,6 +6,7 @@ import { AuditLog, ClassSession, CommissionLedger, CommissionRule, CommunityPost
 import { audit } from '../services/audit.js'
 import { saveSetting, setting } from '../services/settings.js'
 import { notify, admins, active, asId, pageArgs, queryEnum, queryText } from './routeHelpers.js'
+import { sendMembershipActivatedEmail } from '../services/email.js'
 
 const router = Router()
 
@@ -56,6 +57,10 @@ router.patch('/users/admin/:id/status', requireAuth, admins, asyncRoute(async (r
   await user.save()
   await audit(req, alreadyPaid ? 'member.status.restore' : 'member.activated.admin', 'User', user.id, { status, activationMethod: alreadyPaid ? 'PAYMENT' : 'ADMIN' })
   if (!alreadyPaid) await Notification.create({ user: user._id, title: 'Membership activated', message: 'An administrator activated your member access.', type: 'membership', link: '/dashboard' })
+  if (!alreadyPaid) {
+    try { await sendMembershipActivatedEmail(user) }
+    catch (error) { console.error('Membership activation email failed:', error.message) }
+  }
   res.json({ user: publicUser(user), activationMethod: alreadyPaid ? 'PAYMENT' : 'ADMIN' })
 }))
 

@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { allowRoles, requireActiveMember, requireAuth } from '../middleware/auth.js'
 import { asyncRoute, parse, publicUser } from '../utils/http.js'
-import { AuditLog, ClassSession, CommissionLedger, CommissionRule, CommunityPost, Course, Enrollment, Event, EventRegistration, Membership, Notification, Payment, Referral, ServiceRequest, SystemSetting, User, Withdrawal } from '../models/index.js'
+import { AuditLog, ClassSession, CommissionLedger, CommissionRule, CommunityPost, Course, Enrollment, Event, EventRegistration, Membership, Notification, Payment, Referral, ServiceRequest, SystemSetting, User, Withdrawal, Enquiry } from '../models/index.js'
 import { audit } from '../services/audit.js'
 import { saveSetting, setting } from '../services/settings.js'
 import { notify, admins, active, asId, pageArgs } from './routeHelpers.js'
@@ -27,15 +27,17 @@ router.get('/dashboard/summary', ...active, asyncRoute(async (req, res) => {
 }))
 
 router.get('/admin/overview', requireAuth, admins, asyncRoute(async (_req, res) => {
-  const [totalMembers, activeMembers, pendingMembers, payments, commissions, withdrawals, requests, upcomingClasses, upcomingEvents, recentUsers] = await Promise.all([
+  const [totalMembers, activeMembers, pendingMembers, payments, commissions, withdrawals, requests, enquiries, upcomingClasses, upcomingEvents, recentUsers] = await Promise.all([
     User.countDocuments({ role: 'USER' }), User.countDocuments({ membershipStatus: 'ACTIVE' }), User.countDocuments({ membershipStatus: 'PENDING' }),
     Payment.aggregate([{ $group: { _id: '$status', total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
     CommissionLedger.aggregate([{ $group: { _id: '$status', total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
     Withdrawal.aggregate([{ $group: { _id: '$status', total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
-    ServiceRequest.countDocuments({ status: 'NEW' }), ClassSession.countDocuments({ isPublished: true, startsAt: { $gte: new Date() } }), Event.countDocuments({ status: 'PUBLISHED', startsAt: { $gte: new Date() } }),
+    ServiceRequest.countDocuments({ status: 'NEW' }),
+    Enquiry.countDocuments({ status: 'new' }),
+    ClassSession.countDocuments({ isPublished: true, startsAt: { $gte: new Date() } }), Event.countDocuments({ status: 'PUBLISHED', startsAt: { $gte: new Date() } }),
     User.find().select('fullName email username membershipStatus createdAt').sort({ createdAt: -1 }).limit(6),
   ])
-  res.json({ totalMembers, activeMembers, pendingMembers, payments, commissions, withdrawals, newRequests: requests, upcomingClasses, upcomingEvents, recentUsers })
+  res.json({ totalMembers, activeMembers, pendingMembers, payments, commissions, withdrawals, newRequests: requests, newEnquiries: enquiries, upcomingClasses, upcomingEvents, recentUsers })
 }))
 router.get('/reports/admin', requireAuth, admins, asyncRoute(async (_req, res) => {
   const since = new Date(); since.setMonth(since.getMonth() - 11, 1); since.setHours(0, 0, 0, 0)

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { Footer, Navbar } from './components/Site.jsx'
+import { Footer, Navbar, WhatsAppButton } from './components/Site.jsx'
 import { RequireAdmin, RequireAuth, RequireMember } from './components/RouteGuard.jsx'
 import { useAuth } from './context/AuthContext.jsx'
 import { memberHome } from './config/testMode.js'
@@ -18,6 +18,9 @@ const Services = lazy(() => import('./pages/public/Pages.jsx').then(module => ({
 const LoginPage = lazy(() => import('./pages/public/AuthPages.jsx').then(module => ({ default: module.LoginPage })))
 const PaymentPage = lazy(() => import('./pages/public/AuthPages.jsx').then(module => ({ default: module.PaymentPage })))
 const RegisterPage = lazy(() => import('./pages/public/AuthPages.jsx').then(module => ({ default: module.RegisterPage })))
+const VerifyEmailPage = lazy(() => import('./pages/public/AuthPages.jsx').then(module => ({ default: module.VerifyEmailPage })))
+const ForgotPasswordPage = lazy(() => import('./pages/public/AuthPages.jsx').then(module => ({ default: module.ForgotPasswordPage })))
+const ResetPasswordPage = lazy(() => import('./pages/public/AuthPages.jsx').then(module => ({ default: module.ResetPasswordPage })))
 const MemberPortal = lazy(() => import('./pages/user/MemberPortal.jsx'))
 const AdminPortal = lazy(() => import('./pages/admin/AdminPortal.jsx'))
 
@@ -28,13 +31,13 @@ function NotFound() { return <main className="not-found"><span>404</span><h1>Tha
 export default function App() {
   const { pathname } = useLocation(); const { user } = useAuth()
   const isPortal = pathname.startsWith('/dashboard') || pathname.startsWith('/admin')
-  const isAuthPage = ['/login','/register','/payment'].includes(pathname)
+  const isAuthPage = ['/login','/register','/payment','/verify-email','/forgot-password','/reset-password'].includes(pathname)
   return <><ScrollToTop/><PageMetadata/>{!isPortal&&!isAuthPage&&<Navbar/>}<main><Suspense fallback={<div className="page-loading" role="status" aria-label="Loading page"><span /></div>}><Routes>
     <Route path="/" element={<Home/>}/><Route path="/about" element={<About/>}/><Route path="/about/company" element={<About/>}/>
     <Route path="/about/founders" element={<About/>}/><Route path="/about/leadership" element={<About/>}/><Route path="/about/partners" element={<ContentPending type="partners"/>}/><Route path="/about/registration" element={<ContentPending type="registration"/>}/>
-    <Route path="/services" element={<Services/>}/><Route path="/services/web-development" element={<ServiceDetail/>}/><Route path="/services/social-media" element={<ServiceDetail/>}/><Route path="/services/graphic-design" element={<ServiceDetail/>}/><Route path="/services/digital-training" element={<Learning/>}/><Route path="/services/tourism" element={<ServiceDetail/>}/>
+    <Route path="/services" element={<Services/>}/><Route path="/services/web-development" element={<ServiceDetail/>}/><Route path="/services/social-media" element={<ServiceDetail/>}/><Route path="/services/graphic-design" element={<ServiceDetail/>}/><Route path="/services/consulting" element={<ServiceDetail/>}/><Route path="/services/business-support" element={<ServiceDetail/>}/><Route path="/services/retainers" element={<ServiceDetail/>}/><Route path="/services/digital-training" element={<Learning/>}/><Route path="/services/tourism" element={<ServiceDetail/>}/>
     <Route path="/tours" element={<Navigate to="/services/tourism" replace/>}/><Route path="/tours/destinations" element={<Navigate to="/services/tourism" replace/>}/><Route path="/tours/packages" element={<Navigate to="/services/tourism" replace/>}/><Route path="/learning" element={<Learning/>}/><Route path="/courses" element={<Learning/>}/><Route path="/events" element={<Events/>}/><Route path="/community" element={<ContentPending type="community"/>}/><Route path="/testimonials" element={<ContentPending type="testimonials"/>}/><Route path="/contact" element={<Contact/>}/><Route path="/legal" element={<Legal/>}/><Route path="/legal/*" element={<Legal/>}/><Route path="/platform" element={<PlatformInfo/>}/>
     <Route element={<RequireAuth/>}><Route path="/payment" element={<PaymentPage/>}/><Route element={<RequireMember/>}><Route path="/dashboard/*" element={<MemberPortal/>}/></Route><Route element={<RequireAdmin/>}><Route path="/admin/*" element={<AdminPortal/>}/></Route></Route>
-    <Route path="/login" element={user?<Navigate to={memberHome(user)} replace/>:<LoginPage/>}/><Route path="/register" element={user?<Navigate to={memberHome(user)} replace/>:<RegisterPage/>}/><Route path="*" element={<NotFound/>}/>
-  </Routes></Suspense></main>{!isPortal&&<Footer/>}</>
+    <Route path="/login" element={user?<Navigate to={memberHome(user)} replace/>:<LoginPage/>}/><Route path="/register" element={user?<Navigate to={memberHome(user)} replace/>:<RegisterPage/>}/><Route path="/verify-email" element={<VerifyEmailPage/>}/><Route path="/forgot-password" element={<ForgotPasswordPage/>}/><Route path="/reset-password" element={<ResetPasswordPage/>}/><Route path="*" element={<NotFound/>}/>
+  </Routes></Suspense></main>{!isPortal&&<Footer/>}<WhatsAppButton/></>
 }

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Menu, X } from 'lucide-react'
+import { ArrowDownRight, ArrowRight, ArrowUpRight, Menu, MessageCircle, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { memberHome } from '../config/testMode.js'
 
 const navItems = [['About', '/about'], ['Services', '/services'], ['Learning', '/learning'], ['Events', '/events'], ['Contact', '/contact']]
+const contactEmail = 'info@wabwireglobals@gmail.com'
+const whatsappUrl = 'https://wa.me/254700000000?text=Hello%20Wabwire%20Global%20Innovations'
 
 export function Navbar() {
   const { user } = useAuth()
@@ -36,10 +38,16 @@ export function Footer() {
       <div><h4>Explore</h4><Link to="/about">About Wabwire</Link><Link to="/services">Our services</Link><Link to="/learning">Learning & development</Link><Link to="/events">Events</Link></div>
       <div><h4>Services</h4><Link to="/services/web-development">Technology & digital</Link><Link to="/services/social-media">Digital marketing</Link><Link to="/services/tourism">Travel & lifestyle</Link><Link to="/services/graphic-design">Branding & design</Link></div>
       <div><h4>Members</h4><Link to="/login">Member login</Link><Link to="/register">Register</Link><Link to="/learning">Learning</Link><Link to="/events">Events</Link></div>
-      <div><h4>Get in touch</h4><Link to="/contact">Send an enquiry <ArrowUpRight size={14} /></Link><span className="footer-note">Official contact details pending confirmation</span></div>
+      <div><h4>Get in touch</h4><Link to="/contact">Send an enquiry <ArrowUpRight size={14} /></Link><a href={`mailto:${contactEmail}`}>{contactEmail}</a><a href={whatsappUrl} target="_blank" rel="noreferrer">WhatsApp · 0700000000</a></div>
     </div>
     <div className="footer-bottom container"><span>© {new Date().getFullYear()} Wabwire Global Innovations Ltd.</span><span>Innovating today. Transforming tomorrow.</span><Link to="/legal">Legal information</Link></div>
   </footer>
+}
+
+export function WhatsAppButton() {
+  return <a className="whatsapp-float" href={whatsappUrl} target="_blank" rel="noreferrer" aria-label="Chat with Wabwire on WhatsApp">
+    <MessageCircle size={22} aria-hidden="true"/><span>Chat with us</span>
+  </a>
 }
 
 export function PageHero({ eyebrow, title, text, image, compact = false, children }) {
