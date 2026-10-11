@@ -3,14 +3,10 @@ WABWIRE EMAIL SETUP WITH RESEND
 
 What this project already does
 ------------------------------
-The backend sends campaign emails through Resend's HTTPS API. It reads two
-server-only settings from backend/.env:
-
-  EMAIL_API_KEY=
-  EMAIL_FROM=
-
-Do not put either value in frontend/.env, a VITE_ variable, source code, or a
-message/chat. Never commit backend/.env. It is ignored by Git.
+The backend sends transactional and campaign email through Resend's HTTPS API.
+Configure the API key and verified sender only in the backend's private local
+configuration or deployment secret settings. Do not put secret values in the
+frontend, source code, documentation, Git, or messages.
 
 Setup steps
 -----------
@@ -36,15 +32,10 @@ Setup steps
    that option. Resend displays the secret only once, so copy it directly into
    the backend environment and keep it private.
 
-5. Edit wabwire/backend/.env (copy backend/.env.example if needed), filling:
-
-  EMAIL_API_KEY=re_your_secret_key_here
-  EMAIL_FROM=Wabwire <notifications@mail.yourdomain.com>
-
-   The address after the display name must use the verified domain/subdomain.
-   Use a real mailbox for replies if replies are expected; this application
-   currently sends messages as text-only emails and does not configure reply
-   routing.
+5. Configure the Resend API key and sender address in the backend's private
+   environment settings. The sender address must use the verified domain or
+   subdomain. Use a real mailbox for replies if replies are expected; this
+   application does not currently configure reply routing.
 
 6. Restart the backend so it reads the new environment values. In Admin >
    Communications, create an announcement and use a test recipient that you
@@ -52,8 +43,8 @@ Setup steps
    opted-in/appropriate recipients; honor applicable consent and unsubscribe
    requirements before using bulk announcements.
 
-7. In production hosting, add EMAIL_API_KEY and EMAIL_FROM to the BACKEND
-   service's private environment-variable settings. Do not put them in the
+7. In production hosting, add the Resend API key and sender address to the
+   BACKEND service's private environment settings. Do not put them in the
    frontend hosting project. Redeploy/restart the backend after setting them.
 
 Troubleshooting

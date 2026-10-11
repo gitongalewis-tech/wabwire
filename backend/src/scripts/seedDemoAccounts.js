@@ -7,8 +7,8 @@ import { setting } from '../services/settings.js'
 import { seedCommissionRules } from '../services/membership.js'
 
 const demoPassword = process.env.DEMO_MEMBER_PASSWORD
-if (!process.env.MONGODB_URI || !demoPassword || demoPassword !== '#Toshlewi254') {
-  console.error('Set MONGODB_URI and DEMO_MEMBER_PASSWORD to the requested demo password in backend/.env.')
+if (!process.env.MONGODB_URI || !demoPassword) {
+  console.error('Set MONGODB_URI and DEMO_MEMBER_PASSWORD in the backend private environment before creating demo records.')
   process.exit(1)
 }
 
