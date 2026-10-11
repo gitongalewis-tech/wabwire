@@ -2,12 +2,37 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { allowRoles, requireActiveMember, requireAuth } from '../middleware/auth.js'
 import { asyncRoute, parse, publicUser } from '../utils/http.js'
-import { AuditLog, ClassSession, CommissionLedger, CommissionRule, CommunityPost, Course, Enrollment, Event, EventRegistration, Membership, Notification, Payment, Referral, ServiceRequest, SystemSetting, User, Withdrawal } from '../models/index.js'
+import { AuditLog, ClassSession, CommissionLedger, CommissionRule, CommunityPost, Course, Enrollment, Event, EventRegistration, Membership, Notification, Payment, Referral, ReferralMessage, ServiceRequest, SystemSetting, User, Withdrawal } from '../models/index.js'
 import { audit } from '../services/audit.js'
 import { saveSetting, setting } from '../services/settings.js'
 import { notify, admins, active, asId, pageArgs } from './routeHelpers.js'
 
 const router = Router()
+
+// A private conversation shared by one inviter and their direct invitees.
+async function referralGroupFor(user) {
+  const ownerId = user.referredBy || user._id
+  const owner = await User.findById(ownerId).select('fullName username')
+  if (!owner) return null
+  const invitees = await User.find({ referredBy: ownerId }).select('fullName username').sort({ createdAt: 1 }).limit(500)
+  const participants = [owner, ...invitees]
+  return { ownerId, participants }
+}
+
+router.get('/referral-chat', ...active, asyncRoute(async (req, res) => {
+  const group = await referralGroupFor(req.user)
+  if (!group || !group.participants.some(person => asId(person._id) === req.user.id)) return res.status(403).json({ message: 'You are not part of this referral group.' })
+  const messages = await ReferralMessage.find({ groupOwner: group.ownerId }).sort({ createdAt: -1 }).limit(100).populate('sender', 'fullName username')
+  res.json({ participants: group.participants, messages: messages.reverse() })
+}))
+router.post('/referral-chat', ...active, asyncRoute(async (req, res) => {
+  const { body } = parse(z.object({ body: z.string().trim().min(1).max(2000) }), req.body)
+  const group = await referralGroupFor(req.user)
+  if (!group || !group.participants.some(person => asId(person._id) === req.user.id)) return res.status(403).json({ message: 'You are not part of this referral group.' })
+  const message = await ReferralMessage.create({ groupOwner: group.ownerId, sender: req.user._id, body })
+  await message.populate('sender', 'fullName username')
+  res.status(201).json({ message })
+}))
 
 // Community moderation
 router.get('/community', ...active, asyncRoute(async (_req, res) => res.json({ posts: await CommunityPost.find({ removedAt: null }).populate('author', 'fullName username role').populate('comments.author', 'fullName username').sort({ pinned: -1, createdAt: -1 }).limit(100) })))

@@ -5,7 +5,7 @@ import { asyncRoute, parse, publicUser } from '../utils/http.js'
 import { AuditLog, ClassSession, CommissionLedger, CommissionRule, CommunityPost, Course, Enrollment, Event, EventRegistration, Membership, Notification, Payment, Referral, ServiceRequest, SystemSetting, User, Withdrawal } from '../models/index.js'
 import { audit } from '../services/audit.js'
 import { saveSetting, setting } from '../services/settings.js'
-import { notify, admins, active, asId, pageArgs } from './routeHelpers.js'
+import { notify, admins, active, asId, pageArgs, queryEnum } from './routeHelpers.js'
 
 const router = Router()
 
@@ -21,7 +21,7 @@ router.post('/withdrawals/mine', ...active, asyncRoute(async (req, res) => {
   if (data.amount > available) return res.status(400).json({ message: `Your available balance is KES ${available.toLocaleString()}.` })
   const withdrawal = await Withdrawal.create({ user: req.user._id, ...data }); await audit(req, 'withdrawal.request', 'Withdrawal', withdrawal.id, { amount: data.amount }); res.status(201).json({ withdrawal })
 }))
-router.get('/withdrawals/admin', requireAuth, admins, asyncRoute(async (req, res) => { const filter = req.query.status && req.query.status !== 'ALL' ? { status: req.query.status } : {}; res.json({ withdrawals: await Withdrawal.find(filter).populate('user', 'fullName username phone').sort({ createdAt: -1 }).limit(100) }) }))
+router.get('/withdrawals/admin', requireAuth, admins, asyncRoute(async (req, res) => { const status = queryEnum(req.query, 'status', ['PENDING', 'APPROVED', 'PROCESSING', 'PAID', 'REJECTED', 'CANCELLED', 'ALL']); const filter = status === 'ALL' ? {} : { status }; res.json({ withdrawals: await Withdrawal.find(filter).populate('user', 'fullName username phone').sort({ createdAt: -1 }).limit(100) }) }))
 router.patch('/withdrawals/admin/:id/status', requireAuth, admins, asyncRoute(async (req, res) => {
   const { status, note = '' } = parse(z.object({ status: z.enum(['APPROVED', 'PROCESSING', 'PAID', 'REJECTED']), note: z.string().max(300).optional() }), req.body)
   const withdrawal = await Withdrawal.findById(req.params.id)

@@ -19,7 +19,7 @@ export async function activateVerifiedMembership(paymentId, verifiedBy = null) {
       user.status = 'ACTIVE'
       user.membershipStatus = 'ACTIVE'
       await user.save({ session })
-      await Membership.findOneAndUpdate({ user: user._id }, { user: user._id, payment: payment._id, amount: payment.amount, status: 'ACTIVE', activatedAt: new Date() }, { upsert: true, new: true, session })
+      await Membership.findOneAndUpdate({ user: user._id }, { user: user._id, payment: payment._id, amount: payment.amount, status: 'ACTIVE', activationMethod: 'PAYMENT', activatedBy: verifiedBy || undefined, activatedAt: new Date() }, { upsert: true, new: true, session })
 
       let child = user
       for (let level = 1; level <= 3 && child.referredBy; level += 1) {

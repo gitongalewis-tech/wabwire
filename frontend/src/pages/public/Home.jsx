@@ -4,7 +4,7 @@ import Hero from '../../components/Hero.jsx'
 import { ButtonLink, CTA, SectionHead } from '../../components/Site.jsx'
 import { services } from '../../data/site.js'
 
-const imageDigital = 'https://images.pexels.com/photos/13377868/pexels-photo-13377868.jpeg?auto=compress&cs=tinysrgb&w=1400'
+const imageDigital = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=85'
 const imageTravel = 'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&w=1200&q=85'
 
 export default function Home() {

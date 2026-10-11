@@ -11,7 +11,7 @@ const router = Router()
 
 // Member and administrator summaries
 router.get('/dashboard/summary', ...active, asyncRoute(async (req, res) => {
-  const [direct, allReferrals, courses, enrollments, upcoming, commissions, fee, user] = await Promise.all([
+  const [direct, courses, enrollments, upcoming, commissions, fee, user] = await Promise.all([
     Referral.countDocuments({ referrer: req.user._id }),
     Course.countDocuments({ isPublished: true }), Enrollment.find({ user: req.user._id }).populate('course', 'title'),
     ClassSession.find({ isPublished: true, startsAt: { $gte: new Date() } }).sort({ startsAt: 1 }).limit(4).populate('course', 'title').populate('instructor', 'fullName'),

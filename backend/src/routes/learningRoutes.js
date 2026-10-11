@@ -8,17 +8,19 @@ import { saveSetting, setting } from '../services/settings.js'
 import { notify, admins, active, asId, pageArgs } from './routeHelpers.js'
 
 const router = Router()
+const lessonSchema = z.object({ title: z.string().trim().min(2).max(150), description: z.string().max(1000).optional(), videoUrl: z.string().url().optional().or(z.literal('')), resourceUrl: z.string().url().optional().or(z.literal('')), durationMinutes: z.coerce.number().int().min(0).optional() }).strict()
+const moduleSchema = z.object({ title: z.string().trim().min(2).max(150), lessons: z.array(lessonSchema).optional() }).strict()
 
 // Learning: published courses are public to inspect; enrollment and lessons require active membership.
 router.get('/courses', asyncRoute(async (_req, res) => res.json({ courses: await Course.find({ isPublished: true }).select('-modules').populate('instructor', 'fullName').sort({ createdAt: -1 }) })))
 router.get('/courses/admin', requireAuth, admins, asyncRoute(async (_req, res) => res.json({ courses: await Course.find().populate('instructor', 'fullName').sort({ createdAt: -1 }) })))
 router.post('/courses/admin', requireAuth, admins, asyncRoute(async (req, res) => {
-  const data = parse(z.object({ title: z.string().trim().min(3).max(150), description: z.string().trim().min(10).max(3000), category: z.string().max(100).optional(), isPublished: z.boolean().optional(), modules: z.array(z.object({ title: z.string().trim().min(2).max(150), lessons: z.array(z.object({ title: z.string().trim().min(2).max(150), description: z.string().max(1000).optional(), videoUrl: z.string().url().optional().or(z.literal('')), resourceUrl: z.string().url().optional().or(z.literal('')), durationMinutes: z.coerce.number().int().min(0).optional() })).optional() })).optional() }), req.body)
+  const data = parse(z.object({ title: z.string().trim().min(3).max(150), description: z.string().trim().min(10).max(3000), category: z.string().max(100).optional(), isPublished: z.boolean().optional(), modules: z.array(moduleSchema).max(100).optional() }).strict(), req.body)
   const slug = `${data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString().slice(-5)}`
   const course = await Course.create({ ...data, slug, instructor: req.user._id }); await audit(req, 'course.create', 'Course', course.id); res.status(201).json({ course })
 }))
 router.patch('/courses/admin/:id', requireAuth, admins, asyncRoute(async (req, res) => {
-  const data = parse(z.object({ title: z.string().trim().min(3).max(150).optional(), description: z.string().trim().min(10).max(3000).optional(), category: z.string().max(100).optional(), isPublished: z.boolean().optional(), modules: z.array(z.any()).optional() }).strict(), req.body)
+  const data = parse(z.object({ title: z.string().trim().min(3).max(150).optional(), description: z.string().trim().min(10).max(3000).optional(), category: z.string().max(100).optional(), isPublished: z.boolean().optional(), modules: z.array(moduleSchema).max(100).optional() }).strict(), req.body)
   const course = await Course.findByIdAndUpdate(req.params.id, data, { new: true, runValidators: true }); if (!course) return res.status(404).json({ message: 'Course not found.' }); await audit(req, 'course.update', 'Course', course.id, data); res.json({ course })
 }))
 router.post('/courses/:id/enroll', ...active, asyncRoute(async (req, res) => {

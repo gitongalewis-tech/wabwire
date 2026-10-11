@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { testMembershipMode } from '../config/testMode.js'
 
 export function RequireAuth() {
   const { user, loading } = useAuth(); const location = useLocation()
@@ -9,7 +10,7 @@ export function RequireAuth() {
 
 export function RequireMember() {
   const { user } = useAuth()
-  return user?.membershipStatus === 'ACTIVE' || ['ADMIN', 'SUPER_ADMIN'].includes(user?.role) ? <Outlet /> : <Navigate to="/payment" replace />
+  return user?.membershipStatus === 'ACTIVE' || testMembershipMode || ['ADMIN', 'SUPER_ADMIN'].includes(user?.role) ? <Outlet /> : <Navigate to="/payment" replace />
 }
 
 export function RequireAdmin() {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Menu, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { memberHome } from '../config/testMode.js'
 
 const navItems = [['About', '/about'], ['Services', '/services'], ['Learning', '/learning'], ['Events', '/events'], ['Contact', '/contact']]
 
@@ -22,7 +23,7 @@ export function Navbar() {
       <nav className={`nav-links ${open ? 'nav-links--open' : ''}`} aria-label="Main navigation">
         {navItems.map(([label, path]) => <NavLink key={path} to={path}>{label}</NavLink>)}
       </nav>
-      <div className="nav-actions"><Link className="nav-login" to={user ? (user.membershipStatus==='ACTIVE'?'/dashboard':'/payment') : '/login'}>{user ? 'My account' : 'Member login'}</Link><Link className="button button--gold button--small" to={user ? (user.membershipStatus==='ACTIVE'?'/dashboard':'/payment') : '/register'}>{user ? 'Open dashboard' : 'Join Wabwire'} <ArrowUpRight size={15} /></Link></div>
+      <div className="nav-actions"><Link className="nav-login" to={user ? memberHome(user) : '/login'}>{user ? 'My account' : 'Member login'}</Link><Link className="button button--gold button--small" to={user ? memberHome(user) : '/register'}>{user ? 'Open dashboard' : 'Join Wabwire'} <ArrowUpRight size={15} /></Link></div>
       <button className="menu-toggle" onClick={() => setOpen(!open)} aria-label={open ? 'Close navigation' : 'Open navigation'} aria-expanded={open}>{open ? <X /> : <Menu />}</button>
     </div>
   </header>

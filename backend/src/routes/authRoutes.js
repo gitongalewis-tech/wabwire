@@ -6,14 +6,15 @@ import { Membership, Referral, User } from '../models/index.js'
 import { requireAuth } from '../middleware/auth.js'
 import { asyncRoute, parse, publicUser } from '../utils/http.js'
 import { setting } from '../services/settings.js'
+import { testMembershipAccess } from '../utils/testMode.js'
 
 const router = Router()
 const registerSchema = z.object({
-  fullName: z.string().trim().min(2).max(120), username: z.string().trim().regex(/^[a-zA-Z0-9_.-]{3,30}$/),
-  email: z.string().trim().email().max(254), phone: z.string().trim().max(40).optional().default(''),
+  fullName: z.string().trim().min(2, 'Enter your full name.').max(120, 'Full name must be 120 characters or fewer.'), username: z.string().trim().min(3, 'Username must be at least 3 characters.').max(30, 'Username must be 30 characters or fewer.').regex(/^[a-zA-Z0-9_.-]+$/, 'Use only letters, numbers, dots, underscores, or hyphens in your username.'),
+  email: z.string().trim().email('Enter a valid email address.').max(254), phone: z.string().trim().max(40).optional().default(''),
   country: z.string().trim().max(80).optional().default('Kenya'), county: z.string().trim().max(80).optional().default(''),
-  password: z.string().min(10).max(128), referralCode: z.string().trim().max(60).optional().default(''),
-  acceptedTerms: z.literal(true), acceptedPrivacy: z.literal(true), acceptedMembership: z.literal(true), acceptedReferral: z.literal(true),
+  password: z.string().min(10, 'Use a password with at least 10 characters.').max(128, 'Password must be 128 characters or fewer.'), referralCode: z.string().trim().max(60).optional().default(''),
+  acceptedTerms: z.literal(true, { errorMap: () => ({ message: 'Please acknowledge the Terms & Conditions.' }) }), acceptedPrivacy: z.literal(true, { errorMap: () => ({ message: 'Please acknowledge the Privacy Policy.' }) }), acceptedMembership: z.literal(true, { errorMap: () => ({ message: 'Please acknowledge the Membership Agreement.' }) }), acceptedReferral: z.literal(true, { errorMap: () => ({ message: 'Please acknowledge the Referral & Compensation Policy.' }) }),
 })
 const loginSchema = z.object({ email: z.string().trim().email(), password: z.string().min(1).max(128) })
 const cookieOptions = () => ({ httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 24 * 60 * 60 * 1000, path: '/' })
@@ -26,7 +27,8 @@ router.post('/register', asyncRoute(async (req, res) => {
   const data = parse(registerSchema, req.body)
   const username = data.username.toLowerCase()
   const email = data.email.toLowerCase()
-  if (await User.exists({ $or: [{ email }, { username }] })) return res.status(409).json({ message: 'That email or username is already registered.' })
+  if (await User.exists({ email })) return res.status(409).json({ message: 'This email is already registered. Sign in or use another email address.', details: [{ field: 'email', message: 'Choose a different email address.' }] })
+  if (await User.exists({ username })) return res.status(409).json({ message: 'This username is already taken. Choose another username.', details: [{ field: 'username', message: 'Try a different username.' }] })
   let referrer = null
   if (data.referralCode) {
     referrer = await User.findOne({ referralCode: data.referralCode.toUpperCase(), status: { $ne: 'SUSPENDED' } })
@@ -45,7 +47,7 @@ router.post('/register', asyncRoute(async (req, res) => {
   await Membership.create({ user: user._id, amount: Number(await setting('membershipFeeKes', Number(process.env.MEMBERSHIP_FEE_KES || 5000))), status: 'PENDING' })
   if (referrer) await Referral.create({ referrer: referrer._id, referredUser: user._id, referralCode: referrer.referralCode, level: 1, status: 'PENDING' })
   res.cookie('wabwire_token', issueToken(user), cookieOptions())
-  res.status(201).json({ user: publicUser(user), next: 'payment' })
+  res.status(201).json({ user: publicUser(user), next: testMembershipAccess ? 'dashboard' : 'payment' })
 }))
 
 router.post('/login', asyncRoute(async (req, res) => {

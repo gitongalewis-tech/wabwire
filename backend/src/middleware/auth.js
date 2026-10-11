@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import { User } from '../models/index.js'
+import { testMembershipAccess } from '../utils/testMode.js'
 
 export async function requireAuth(req, res, next) {
   try {
@@ -22,7 +23,7 @@ export function allowRoles(...roles) {
 }
 
 export function requireActiveMember(req, res, next) {
-  return req.user?.membershipStatus === 'ACTIVE' || ['ADMIN', 'SUPER_ADMIN'].includes(req.user?.role)
+  return req.user?.membershipStatus === 'ACTIVE' || testMembershipAccess || ['ADMIN', 'SUPER_ADMIN'].includes(req.user?.role)
     ? next()
     : res.status(403).json({ message: 'An active membership is required to access this area.' })
 }

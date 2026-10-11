@@ -7,6 +7,7 @@ import { initiateStkPush, normalizeKenyanPhone, queryStkPush } from '../integrat
 import { activateVerifiedMembership } from '../services/membership.js'
 import { audit } from '../services/audit.js'
 import { setting } from '../services/settings.js'
+import { pageArgs, queryEnum } from './routeHelpers.js'
 
 const router = Router()
 router.get('/membership/config', asyncRoute(async (_req, res) => res.json({ amount: Number(await setting('membershipFeeKes', Number(process.env.MEMBERSHIP_FEE_KES || 5000))), currency: 'KES', paybill: await setting('mpesaPaybill', process.env.MPESA_PAYBILL || ''), accountReferenceLabel: process.env.MPESA_ACCOUNT_REFERENCE || 'WABWIRE' })))
@@ -50,10 +51,12 @@ router.get('/mine', requireAuth, asyncRoute(async (req, res) => {
 
 router.post('/mpesa/callback', asyncRoute(async (req, res) => {
   const callback = req.body?.Body?.stkCallback
-  if (!callback?.CheckoutRequestID) return res.status(400).json({ ResultCode: 1, ResultDesc: 'Invalid callback.' })
+  if (typeof callback?.CheckoutRequestID !== 'string' || callback.CheckoutRequestID.length < 1 || callback.CheckoutRequestID.length > 100 || !/^[A-Za-z0-9_-]+$/.test(callback.CheckoutRequestID)) return res.status(400).json({ ResultCode: 1, ResultDesc: 'Invalid callback.' })
+  const items = callback.CallbackMetadata?.Item || []
+  if (!Number.isSafeInteger(Number(callback.ResultCode)) || !Array.isArray(items) || items.length > 20 || items.some(item => !item || typeof item !== 'object' || typeof item.Name !== 'string' || item.Name.length > 80)) return res.status(400).json({ ResultCode: 1, ResultDesc: 'Invalid callback.' })
   const payment = await Payment.findOne({ checkoutRequestId: callback.CheckoutRequestID })
   if (!payment || payment.status !== 'PENDING') return res.json({ ResultCode: 0, ResultDesc: 'Callback received.' })
-  const metadata = Object.fromEntries((callback.CallbackMetadata?.Item || []).map(item => [item.Name, item.Value]))
+  const metadata = Object.fromEntries(items.map(item => [item.Name, item.Value]))
   payment.providerResultCode = String(callback.ResultCode)
   payment.providerResultDescription = callback.ResultDesc || ''
   payment.providerCallback = callback
@@ -81,10 +84,11 @@ router.post('/mpesa/callback', asyncRoute(async (req, res) => {
 }))
 
 router.get('/admin', requireAuth, allowRoles('ADMIN', 'SUPER_ADMIN'), asyncRoute(async (req, res) => {
-  const { status = 'PENDING', page = 1, limit = 25 } = req.query
+  const status = queryEnum(req.query, 'status', ['PENDING', 'VERIFIED', 'FAILED', 'REJECTED', 'CANCELLED', 'ALL'], 'PENDING')
+  const { page, limit, skip } = pageArgs(req.query)
   const filter = status === 'ALL' ? {} : { status }
-  const [payments, total] = await Promise.all([Payment.find(filter).populate('user', 'fullName username email referralCode').sort({ createdAt: -1 }).limit(Math.min(Number(limit), 100)).skip((Math.max(Number(page), 1) - 1) * Math.min(Number(limit), 100)).select('-providerCallback'), Payment.countDocuments(filter)])
-  res.json({ payments, total, page: Number(page) })
+  const [payments, total] = await Promise.all([Payment.find(filter).populate('user', 'fullName username email referralCode').sort({ createdAt: -1 }).limit(limit).skip(skip).select('-providerCallback'), Payment.countDocuments(filter)])
+  res.json({ payments, total, page })
 }))
 
 router.post('/admin/:id/verify', requireAuth, allowRoles('ADMIN', 'SUPER_ADMIN'), asyncRoute(async (req, res) => {
