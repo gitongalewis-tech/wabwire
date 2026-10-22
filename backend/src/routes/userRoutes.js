@@ -6,7 +6,6 @@ import { AuditLog, ClassSession, CommissionLedger, CommissionRule, CommunityPost
 import { audit } from '../services/audit.js'
 import { saveSetting, setting } from '../services/settings.js'
 import { notify, admins, active, asId, pageArgs, queryEnum, queryText } from './routeHelpers.js'
-import { sendMembershipActivatedEmail } from '../services/email.js'
 
 const router = Router()
 
@@ -38,30 +37,26 @@ router.patch('/users/admin/:id/status', requireAuth, admins, asyncRoute(async (r
   }
   if (status === 'PENDING') return res.status(400).json({ message: 'Membership status can only be set to active or suspended by an administrator.' })
   const membership = await Membership.findOne({ user: user._id })
-  const alreadyPaid = Boolean(membership?.payment || membership?.activationMethod === 'PAYMENT')
+  const targetAmount = Number(await setting('membershipFeeKes', Number(process.env.MEMBERSHIP_FEE_KES || 5000)))
+  const verifiedPayments = await Payment.aggregate([{ $match: { user: user._id, status: 'VERIFIED', purpose: { $ne: 'SERVICE' } } }, { $group: { _id: null, total: { $sum: '$amount' } } }])
+  const alreadyPaid = (verifiedPayments[0]?.total || 0) >= targetAmount
+  if (!alreadyPaid) return res.status(409).json({ message: 'The membership activation threshold has not been reached with verified payments. Review the payment ledger before granting access.' })
   const activatedAt = membership?.activatedAt || new Date()
   if (membership) {
     membership.status = 'ACTIVE'
-    membership.amount = membership.amount || Number(await setting('membershipFeeKes', Number(process.env.MEMBERSHIP_FEE_KES || 5000)))
+    membership.amount = membership.amount || targetAmount
     membership.activatedAt = activatedAt
-    if (!alreadyPaid) {
-      membership.activationMethod = 'ADMIN'
-      membership.activatedBy = req.user._id
-    }
+    membership.activationMethod = 'PAYMENT'
     await membership.save()
   } else {
-    await Membership.create({ user: user._id, amount: Number(await setting('membershipFeeKes', Number(process.env.MEMBERSHIP_FEE_KES || 5000))), status: 'ACTIVE', activationMethod: 'ADMIN', activatedBy: req.user._id, activatedAt })
+    await Membership.create({ user: user._id, amount: targetAmount, status: 'ACTIVE', activationMethod: 'PAYMENT', activatedAt })
   }
   user.status = 'ACTIVE'
   user.membershipStatus = 'ACTIVE'
   await user.save()
-  await audit(req, alreadyPaid ? 'member.status.restore' : 'member.activated.admin', 'User', user.id, { status, activationMethod: alreadyPaid ? 'PAYMENT' : 'ADMIN' })
-  if (!alreadyPaid) await Notification.create({ user: user._id, title: 'Membership activated', message: 'An administrator activated your member access.', type: 'membership', link: '/dashboard' })
-  if (!alreadyPaid) {
-    try { await sendMembershipActivatedEmail(user) }
-    catch (error) { console.error('Membership activation email failed:', error.message) }
-  }
-  res.json({ user: publicUser(user), activationMethod: alreadyPaid ? 'PAYMENT' : 'ADMIN' })
+  await audit(req, 'member.status.restore', 'User', user.id, { status, activationMethod: 'PAYMENT' })
+  await Notification.create({ user: user._id, title: 'Membership access restored', message: 'Your member access has been restored based on your verified payment history.', type: 'membership', link: '/dashboard' })
+  res.json({ user: publicUser(user), activationMethod: 'PAYMENT' })
 }))
 
 export default router

@@ -7,8 +7,8 @@ import { setting } from '../services/settings.js'
 import { seedCommissionRules } from '../services/membership.js'
 
 const demoPassword = process.env.DEMO_MEMBER_PASSWORD
-if (!process.env.MONGODB_URI || !demoPassword) {
-  console.error('Set MONGODB_URI and DEMO_MEMBER_PASSWORD in the backend private environment before creating demo records.')
+if (!process.env.MONGODB_URI) {
+  console.error('Set MONGODB_URI in the backend private environment before creating demo records.')
   process.exit(1)
 }
 
@@ -32,7 +32,6 @@ try {
   const commissionRules = await CommissionRule.find({ active: true }).sort({ level: 1 })
   const ruleByLevel = new Map(commissionRules.map(rule => [rule.level, rule]))
   const membershipFee = Number(await setting('membershipFeeKes', Number(process.env.MEMBERSHIP_FEE_KES || 5000)))
-  const passwordHash = await bcrypt.hash(demoPassword, 12)
   const users = new Map()
   const now = new Date()
 
@@ -40,14 +39,16 @@ try {
     const email = emailFor(definition.key)
     let user = await User.findOne({ email })
     if (user && !user.isDemo) throw new Error(`Refusing to overwrite an existing non-demo account: ${email}`)
+    if (!user && !demoPassword) throw new Error('Demo accounts already in the database retain their existing passwords. Set DEMO_MEMBER_PASSWORD only if you intentionally need to create a missing demo account.')
 
     const referredBy = definition.parent ? users.get(definition.parent)?._id : null
     if (definition.parent && !referredBy) throw new Error(`Missing demo referral parent for account ${definition.key}.`)
     const referralCode = `WAB-DEMO-${definition.key}`
     if (user) {
-      user.set({ fullName: definition.fullName, username: definition.username, passwordHash, role: 'USER', isDemo: true, status: 'ACTIVE', membershipStatus: 'ACTIVE', emailVerifiedAt: now, emailVerificationTokenHash: undefined, emailVerificationExpiresAt: undefined, passwordResetTokenHash: undefined, passwordResetExpiresAt: undefined, referralCode, referredBy })
+      user.set({ fullName: definition.fullName, username: definition.username, role: 'USER', isDemo: true, status: 'ACTIVE', membershipStatus: 'ACTIVE', emailVerifiedAt: now, emailVerificationTokenHash: undefined, emailVerificationExpiresAt: undefined, passwordResetTokenHash: undefined, passwordResetExpiresAt: undefined, referralCode, referredBy })
       await user.save()
     } else {
+      const passwordHash = await bcrypt.hash(demoPassword, 12)
       user = await User.create({
         fullName: definition.fullName,
         username: definition.username,

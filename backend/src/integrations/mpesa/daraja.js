@@ -47,3 +47,17 @@ export async function queryStkPush(checkoutRequestId) {
   if (!response.ok || data.ResponseCode !== '0') throw new Error(data.errorMessage || data.ResponseDescription || 'M-Pesa could not verify the payment status.')
   return data
 }
+
+export async function initiateB2CPayment({ phone, amount, reference }) {
+  const required = ['MPESA_INITIATOR_NAME', 'MPESA_SECURITY_CREDENTIAL', 'MPESA_B2C_RESULT_URL', 'MPESA_B2C_TIMEOUT_URL']
+  if (required.some(name => !process.env[name])) throw new Error('Daraja B2C payout credentials and callback URLs are not fully configured.')
+  const token = await getAccessToken()
+  const originatorConversationId = `WB${Date.now()}${Math.random().toString(36).slice(2, 9)}`
+  const response = await fetch(`${apiBase()}/mpesa/b2c/v3/paymentrequest`, {
+    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ OriginatorConversationID: originatorConversationId, InitiatorName: process.env.MPESA_INITIATOR_NAME, SecurityCredential: process.env.MPESA_SECURITY_CREDENTIAL, CommandID: process.env.MPESA_B2C_COMMAND_ID || 'BusinessPayment', Amount: Math.ceil(amount), PartyA: process.env.MPESA_B2C_SHORTCODE || process.env.MPESA_SHORTCODE, PartyB: phone, Remarks: `Wabwire ${reference}`.slice(0, 100), QueueTimeOutURL: process.env.MPESA_B2C_TIMEOUT_URL, ResultURL: process.env.MPESA_B2C_RESULT_URL, Occassion: 'Member commission payout' }),
+  })
+  const data = await response.json()
+  if (!response.ok || data.ResponseCode !== '0') throw new Error(data.errorMessage || data.ResponseDescription || 'Daraja could not queue the payout.')
+  return { ...data, originatorConversationId }
+}
