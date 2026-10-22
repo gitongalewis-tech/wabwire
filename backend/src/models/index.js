@@ -26,7 +26,8 @@ const userSchema = new Schema({
   emailVerificationExpiresAt: { type: Date, select: false },
   passwordResetTokenHash: { type: String, select: false },
   passwordResetExpiresAt: { type: Date, select: false },
-  avatarUrl: { type: String, default: '', maxlength: 280000 },
+  sessionVersion: { type: Number, default: 0, min: 0 },
+  avatarUrl: { type: String, default: '', maxlength: 280000, select: false },
   lastLoginAt: Date,
 }, { timestamps: true })
 userSchema.index({ createdAt: -1 })

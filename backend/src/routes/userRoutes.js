@@ -19,7 +19,7 @@ router.get('/users/admin', requireAuth, admins, asyncRoute(async (req, res) => {
   const filter = q ? { $or: [{ fullName: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }, { email: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }, { username: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }] } : {}
   const status = queryEnum(req.query, 'status', ['ACTIVE', 'PENDING', 'SUSPENDED'])
   if (status !== 'ALL') filter.membershipStatus = status
-  const [users, total] = await Promise.all([User.find(filter).select('-passwordHash').sort({ createdAt: -1 }).skip(skip).limit(limit), User.countDocuments(filter)])
+  const [users, total] = await Promise.all([User.find(filter).select('fullName username email phone country county role status membershipStatus referralCode createdAt').sort({ createdAt: -1 }).skip(skip).limit(limit), User.countDocuments(filter)])
   res.json({ users, total, page, limit })
 }))
 router.patch('/users/admin/:id/status', requireAuth, admins, asyncRoute(async (req, res) => {
@@ -31,6 +31,7 @@ router.patch('/users/admin/:id/status', requireAuth, admins, asyncRoute(async (r
   if (status === 'SUSPENDED') {
     user.status = 'SUSPENDED'
     user.membershipStatus = 'SUSPENDED'
+    user.sessionVersion = (user.sessionVersion || 0) + 1
     await user.save()
     await audit(req, 'member.status.update', 'User', user.id, { status })
     return res.json({ user: publicUser(user) })

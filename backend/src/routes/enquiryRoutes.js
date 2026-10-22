@@ -8,7 +8,7 @@ import { audit } from '../services/audit.js'
 import { sendEnquiryReceivedEmail, sendEnquiryReplyEmail } from '../services/email.js'
 
 const router = Router()
-const serviceOptions = ['Website development', 'Digital marketing', 'Branding & design', 'Travel planning', 'Training & business development', 'Consulting', 'Other']
+const serviceOptions = ['Website development', 'Mobile app development', 'Business management system', 'POS system', 'AI integration', 'E-commerce development', 'Digital marketing', 'Branding & design', 'Travel planning', 'Training & business development', 'Consulting', 'Custom quotation', 'Other']
 
 router.get('/admin', requireAuth, allowRoles('ADMIN', 'SUPER_ADMIN'), asyncRoute(async (req, res) => {
   const allowed = ['new', 'reviewing', 'responded', 'closed', 'all']

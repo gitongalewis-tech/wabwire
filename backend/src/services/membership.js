@@ -69,7 +69,7 @@ export async function activateVerifiedMembership(paymentId, verifiedBy = null) {
       if (receipt?.user) await sendPaymentConfirmedEmail(receipt.user, receipt)
     } catch (error) { console.error('Payment confirmation email failed:', error.message) }
   }
-  return activated
+  return verified
 }
 
 export async function seedCommissionRules() {

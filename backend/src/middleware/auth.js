@@ -10,6 +10,7 @@ export async function requireAuth(req, res, next) {
     const payload = jwt.verify(token, process.env.JWT_SECRET)
     const user = await User.findById(payload.sub)
     if (!user || user.status === 'SUSPENDED') return res.status(401).json({ message: 'This account is unavailable.' })
+    if ((payload.sessionVersion || 0) !== (user.sessionVersion || 0)) return res.status(401).json({ message: 'Your session has expired. Please sign in again.' })
     req.user = user
     next()
   } catch (error) {

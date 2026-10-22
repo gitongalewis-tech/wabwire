@@ -41,6 +41,6 @@ Email is sent by the backend through Resend using the verified Wabwire sending d
 
 ## Handover status
 
-The application code and deployed website/API are ready for operational handover. The remaining launch work is payment configuration and sign-off: complete the missing Daraja payout credentials and receiving-account details, validate callbacks end to end in sandbox, and only then enter approved production credentials. Do not enable production payouts before Safaricom approval and successful reconciliation tests.
+The application code and deployed website/API are ready for operational handover. Remaining launch work includes completing the Daraja payout credentials and receiving-account details, validating callbacks end to end in sandbox, and entering approved production credentials only after Safaricom approval. The company must also approve and supply the public privacy, membership, refund and referral policies and the official registration/contact details that the site currently identifies as pending. Do not enable production payouts before Safaricom approval and successful reconciliation tests.
 
 See [the security review](docs/SECURITY-REVIEW.md) for safeguards and operational follow-ups. Supplied agreements and training/pricing PDFs are retained in `docs/source-materials/`; draft agreements are not approved public legal policies.

@@ -19,7 +19,6 @@ const registerSchema = z.object({
   dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter your date of birth.'), idPassportNumber: z.string().trim().min(4, 'Enter your ID or passport number.').max(40).regex(/^[a-zA-Z0-9/-]+$/, 'Use letters, numbers, hyphens or slashes.'),
   password: z.string().min(10, 'Use a password with at least 10 characters.').max(128, 'Password must be 128 characters or fewer.'), confirmPassword: z.string().min(10).max(128),
   inviterUsername: z.string().trim().min(3, 'Enter your inviter’s username.').max(60).regex(/^[a-zA-Z0-9-]+$/, 'Enter a username without spaces or symbols.'),
-  profileImageData: z.string().max(280_000).optional().default(''),
   acceptedTerms: z.literal(true, { errorMap: () => ({ message: 'Please accept the Terms & Conditions.' }) }), acceptedAge: z.literal(true, { errorMap: () => ({ message: 'You must confirm that you are 18 or older.' }) }), acceptedAml: z.literal(true, { errorMap: () => ({ message: 'Please acknowledge the AML requirements.' }) }), acceptedBusinessEffort: z.literal(true, { errorMap: () => ({ message: 'Please acknowledge the business effort and results statement.' }) }), acceptedInviter: z.literal(true, { errorMap: () => ({ message: 'Please confirm your inviter details.' }) }),
 }).superRefine((data, ctx) => {
   if (data.email.toLowerCase() !== data.confirmEmail.toLowerCase()) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['confirmEmail'], message: 'Email addresses do not match.' })
@@ -27,11 +26,10 @@ const registerSchema = z.object({
   const birth = new Date(`${data.dateOfBirth}T00:00:00.000Z`)
   if (Number.isNaN(birth.valueOf()) || birth.toISOString().slice(0, 10) !== data.dateOfBirth) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['dateOfBirth'], message: 'Enter a valid date of birth.' })
   else { const today = new Date(); let age = today.getUTCFullYear() - birth.getUTCFullYear(); const month = today.getUTCMonth() - birth.getUTCMonth(); if (month < 0 || (month === 0 && today.getUTCDate() < birth.getUTCDate())) age -= 1; if (age < 18) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['dateOfBirth'], message: 'You must be 18 years or older to register.' }) }
-  if (data.profileImageData && !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(data.profileImageData)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['profileImageData'], message: 'Upload a valid profile image.' })
 })
 const loginSchema = z.object({ email: z.string().trim().email(), password: z.string().min(1).max(128) })
 const cookieOptions = () => ({ httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'strict', maxAge: 24 * 60 * 60 * 1000, path: '/' })
-const issueToken = user => jwt.sign({ sub: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '1d' })
+const issueToken = user => jwt.sign({ sub: user.id, role: user.role, sessionVersion: user.sessionVersion || 0 }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '1d' })
 const hashToken = token => createHash('sha256').update(token).digest('hex')
 const newToken = () => randomBytes(32).toString('hex')
 const deliver = async (...emails) => {
@@ -83,7 +81,6 @@ router.post('/register', asyncRoute(async (req, res) => {
         country: data.country,
         dateOfBirth: new Date(`${data.dateOfBirth}T00:00:00.000Z`),
         idPassportNumber: data.idPassportNumber,
-        avatarUrl: data.profileImageData,
         passwordHash,
         referralCode,
         referredBy: referrer._id,
@@ -164,6 +161,7 @@ router.post('/reset-password', asyncRoute(async (req, res) => {
   const user = await User.findOne({ passwordResetTokenHash: hashToken(token), passwordResetExpiresAt: { $gt: new Date() } }).select('+passwordResetTokenHash +passwordResetExpiresAt +passwordHash')
   if (!user) return res.status(400).json({ message: 'This password reset link is invalid or expired. Request another one.' })
   user.passwordHash = await bcrypt.hash(password, 12)
+  user.sessionVersion = (user.sessionVersion || 0) + 1
   user.passwordResetTokenHash = undefined
   user.passwordResetExpiresAt = undefined
   await user.save()
@@ -176,7 +174,13 @@ router.patch('/password', requireAuth, asyncRoute(async (req, res) => {
   const { currentPassword, newPassword } = parse(z.object({ currentPassword: z.string().min(1).max(128), newPassword: z.string().min(10).max(128) }), req.body)
   const user = await User.findById(req.user._id).select('+passwordHash')
   if (!(await bcrypt.compare(currentPassword, user.passwordHash))) return res.status(400).json({ message: 'Current password is incorrect.' })
-  user.passwordHash = await bcrypt.hash(newPassword, 12); await user.save(); res.json({ message: 'Password updated.' })
+  user.passwordHash = await bcrypt.hash(newPassword, 12)
+  user.sessionVersion = (user.sessionVersion || 0) + 1
+  user.passwordResetTokenHash = undefined
+  user.passwordResetExpiresAt = undefined
+  await user.save()
+  res.clearCookie('wabwire_token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'strict', path: '/' })
+  res.json({ message: 'Password updated. Sign in again with your new password.' })
 }))
 
 export default router
