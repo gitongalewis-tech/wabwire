@@ -149,7 +149,12 @@ router.post('/forgot-password', asyncRoute(async (req, res) => {
     user.passwordResetTokenHash = hashToken(token)
     user.passwordResetExpiresAt = new Date(Date.now() + 30 * 60 * 1000)
     await user.save()
-    await deliver(sendPasswordResetEmail(user, token))
+    const [delivery] = await deliver(sendPasswordResetEmail(user, token))
+    if (!delivery?.sent) {
+      user.passwordResetTokenHash = undefined
+      user.passwordResetExpiresAt = undefined
+      await user.save()
+    }
   }
   res.json({ message: 'If an account exists for that email address, a password reset link has been sent.' })
 }))
