@@ -118,6 +118,31 @@ img {
   padding:0 0 8px;
   transition:gap .2s
 }
+.seo-fallback {
+  max-width:900px;
+  margin:48px auto;
+  padding:24px;
+  color:#17243a;
+  font:16px/1.7 "DM Sans",Arial,sans-serif
+}
+.seo-fallback h1 {
+  margin:16px 0;
+  font:700 clamp(28px,4vw,42px)/1.15 Manrope,Arial,sans-serif
+}
+.seo-fallback p {
+  max-width:760px
+}
+.seo-fallback nav {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px 20px;
+  margin-top:20px
+}
+.seo-fallback img {
+  width:72px;
+  height:72px;
+  object-fit:contain
+}
 .text-link:hover {
   gap:15px
 }

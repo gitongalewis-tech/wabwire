@@ -7,6 +7,21 @@ const dist = join(root, 'dist')
 const template = await readFile(join(dist, 'index.html'), 'utf8')
 const pages = JSON.parse(await readFile(join(root, 'seo-pages.json'), 'utf8'))
 const escapeHtml = value => value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character])
+const fallbackLinks = [
+  ['/about', 'About Wabwire'],
+  ['/services', 'Services'],
+  ['/services/web-development', 'Software development'],
+  ['/services/tourism', 'Safaris and travel planning'],
+  ['/learning', 'Learning and training'],
+  ['/login', 'Sign in'],
+  ['/register', 'Register'],
+]
+const renderFallback = page => {
+  const links = fallbackLinks.map(([href, label]) => `<a href="${href}">${label}</a>`).join(' ')
+  const homepageContent = page.path === '/' ? `<p>Wabwire Global Innovations is a Kenyan software development company building business websites, mobile apps, custom software, POS and management systems, and AI integrations.</p><p>We also plan Kenya safaris and travel, and offer practical learning in social media, entrepreneurship and network marketing.</p>` : `<p>${escapeHtml(page.description)}</p>`
+  const brand = page.path === '/' ? '<img src="/images/brand/logo-mark.jpg" width="72" height="72" alt="Wabwire Global Innovations logo" />' : ''
+  return `<section class="seo-fallback" data-seo-fallback>${brand}<h1>${escapeHtml(page.path === '/' ? 'Wabwire Global Innovations' : page.title)}</h1>${homepageContent}<nav aria-label="Explore Wabwire">${links}</nav></section>`
+}
 
 for (const page of pages) {
   const url = `https://www.wabwireglobalinnovations.com${page.path === '/' ? '/' : page.path}`
@@ -32,6 +47,7 @@ for (const page of pages) {
     },
   ])}</script>` : ''
   const html = template
+    .replace('<section class="seo-fallback" data-seo-fallback></section>', renderFallback(page))
     .replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(page.title)}</title>`)
     .replace(/<meta name="description" content="[^"]*"\s*\/>/, `<meta name="description" content="${escapeHtml(page.description)}" />`)
     .replace(/<meta name="robots" content="[^"]*"\s*\/>/, `<meta name="robots" content="${page.index ? 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1' : 'noindex, follow'}" />`)
