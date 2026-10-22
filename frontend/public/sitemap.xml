@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url><loc>https://www.wabwireglobalinnovations.com/</loc><image:image><image:loc>https://www.wabwireglobalinnovations.com/images/brand/logo-mark.jpg</image:loc><image:title>Wabwire Global Innovations company logo</image:title><image:caption>Wabwire Global Innovations, a software development company in Kenya</image:caption></image:image><priority>1.0</priority></url>
-  <url><loc>https://www.wabwireglobalinnovations.com/about</loc><priority>0.7</priority></url>
+  <url><loc>https://www.wabwireglobalinnovations.com/about</loc><image:image><image:loc>https://www.wabwireglobalinnovations.com/images/founders/brian-wabwire-about.jpg</image:loc><image:title>Brian Wabwire, Founder of Wabwire Global Innovations</image:title><image:caption>Brian Wabwire, founder and visionary of Wabwire Global Innovations Ltd</image:caption></image:image><priority>0.7</priority></url>
   <url><loc>https://www.wabwireglobalinnovations.com/services</loc><priority>0.9</priority></url>
   <url><loc>https://www.wabwireglobalinnovations.com/services/web-development</loc><priority>1.0</priority></url>
   <url><loc>https://www.wabwireglobalinnovations.com/services/social-media</loc><priority>0.6</priority></url>

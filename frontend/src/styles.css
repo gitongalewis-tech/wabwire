@@ -465,6 +465,15 @@ img {
 .intro-copy .text-link {
   margin-top:20px
 }
+.intro-search-links {
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px 20px;
+  margin-top:18px
+}
+.intro-search-links .text-link {
+  margin-top:0
+}
 .intro-note {
   align-self:end;
   margin-bottom:5px;
