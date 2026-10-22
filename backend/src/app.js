@@ -13,6 +13,7 @@ import { connectDatabase } from './config/database.js'
 import { dispatchDueCampaigns } from './services/campaigns.js'
 
 const app = express()
+const isMpesaCallback = path => path.endsWith('/mpesa/callback') || path.endsWith('/mpesa/b2c-result') || path.endsWith('/mpesa/b2c-timeout')
 if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1)
 app.use(helmet())
 app.use(compression())
@@ -25,9 +26,9 @@ app.use((req, res, next) => {
 })
 app.use(express.json({ limit: '320kb' }))
 app.use(cookieParser())
-app.use((req, res, next) => { if (req.path.endsWith('/mpesa/callback')) return next(); const type = req.get('content-type') || ''; if (req.method !== 'GET' && !type.includes('application/json')) return res.status(415).json({ message: 'Send request data as JSON.' }); next() })
+app.use((req, res, next) => { if (isMpesaCallback(req.path)) return next(); const type = req.get('content-type') || ''; if (req.method !== 'GET' && !type.includes('application/json')) return res.status(415).json({ message: 'Send request data as JSON.' }); next() })
 app.use((req, res, next) => {
-  if (req.method === 'GET' || req.path.endsWith('/mpesa/callback')) return next()
+  if (req.method === 'GET' || isMpesaCallback(req.path)) return next()
   const allowed = (process.env.CLIENT_ORIGIN || 'http://localhost:5173').split(',').map(value => value.trim())
   let requestOrigin = req.get('origin')
   if (!requestOrigin && req.get('referer')) {
