@@ -23,7 +23,7 @@ app.use((req, res, next) => {
   if (origin && !allowed.includes(origin)) return res.status(403).json({ message: 'This website origin is not allowed.' })
   next()
 })
-app.use(express.json({ limit: '32kb' }))
+app.use(express.json({ limit: '320kb' }))
 app.use(cookieParser())
 app.use((req, res, next) => { if (req.path.endsWith('/mpesa/callback')) return next(); const type = req.get('content-type') || ''; if (req.method !== 'GET' && !type.includes('application/json')) return res.status(415).json({ message: 'Send request data as JSON.' }); next() })
 app.use((req, res, next) => {

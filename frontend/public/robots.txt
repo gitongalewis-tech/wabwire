@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /login
+Disallow: /register
+Disallow: /payment
+Disallow: /verify-email
+Disallow: /reset-password
+
+Sitemap: https://wabwireglobalinnovations.com/sitemap.xml

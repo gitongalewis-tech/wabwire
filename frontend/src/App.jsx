@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Footer, Navbar, WhatsAppButton } from './components/Site.jsx'
 import { RequireAdmin, RequireAuth, RequireMember } from './components/RouteGuard.jsx'
 import { useAuth } from './context/AuthContext.jsx'
@@ -25,19 +26,58 @@ const MemberPortal = lazy(() => import('./pages/user/MemberPortal.jsx'))
 const AdminPortal = lazy(() => import('./pages/admin/AdminPortal.jsx'))
 
 function ScrollToTop() { const { pathname } = useLocation(); useEffect(() => { window.scrollTo({ top: 0, behavior: 'auto' }); }, [pathname]); return null }
-function PageMetadata() { const { pathname } = useLocation(); useEffect(() => { const names = { '/': 'Home', '/about': 'About', '/services': 'Services', '/learning': 'Learning', '/events': 'Events', '/contact': 'Contact', '/legal': 'Legal information' }; const detail = pathname.split('/').filter(Boolean).at(-1)?.replaceAll('-', ' '); document.title = `${names[pathname] || (detail ? detail.replace(/\b\w/g, char => char.toUpperCase()) : 'Wabwire')} | Wabwire Global Innovations`; }, [pathname]); return null }
+function ScrollReveal({ pathname }) {
+  const reduceMotion = useReducedMotion()
+  useEffect(() => {
+    if (reduceMotion) return
+    const root = document.querySelector('.route-transition')
+    if (!root) return
+    const targets = '.route-transition section:not(.page-hero):not(.hero), .route-transition .feature-split, .route-transition .service-card, .route-transition .service-row, .route-transition .principle-list article, .route-transition .pillar-grid article, .route-transition .values-grid article, .route-transition .member-benefit-grid article, .route-transition .team-card, .route-transition .course-grid article, .route-transition .event-public-card, .route-transition .price-card, .route-transition .vision-cards article, .route-transition .contact-form, .route-transition .platform-card'
+    let frame = 0
+    const revealVisible = () => {
+      frame = 0
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight
+      root.querySelectorAll('.scroll-pop-target:not(.scroll-pop-visible)').forEach(element => {
+        const bounds = element.getBoundingClientRect()
+        if (bounds.top < viewportHeight * 0.94 && bounds.bottom > 0) element.classList.add('scroll-pop-visible')
+      })
+    }
+    const scheduleReveal = () => {
+      if (!frame) frame = window.requestAnimationFrame(revealVisible)
+    }
+    const revealTargets = () => root.querySelectorAll(targets).forEach((element, index) => {
+      if (element.classList.contains('scroll-pop-target')) return
+      element.classList.add('scroll-pop-target')
+      element.style.setProperty('--scroll-pop-delay', `${Math.min(index % 5, 4) * 75}ms`)
+    })
+    const refreshTargets = () => { revealTargets(); scheduleReveal() }
+    const mutations = new MutationObserver(refreshTargets)
+    mutations.observe(root, { childList: true, subtree: true })
+    refreshTargets()
+    window.addEventListener('scroll', scheduleReveal, { passive: true })
+    window.addEventListener('resize', scheduleReveal)
+    return () => {
+      mutations.disconnect()
+      window.removeEventListener('scroll', scheduleReveal)
+      window.removeEventListener('resize', scheduleReveal)
+      if (frame) window.cancelAnimationFrame(frame)
+    }
+  }, [pathname, reduceMotion])
+  return null
+}
+function PageMetadata() { const { pathname } = useLocation(); useEffect(() => { const base = 'https://wabwireglobalinnovations.com'; const names = { '/': 'Software & Web Development in Kenya', '/about': 'About Wabwire Global Innovations', '/services': 'Website, Software & Digital Services', '/services/web-development': 'Website, App & Software Development', '/services/social-media': 'Social Media Marketing & Management', '/services/graphic-design': 'Branding & Graphic Design', '/services/tourism': 'Kenya Safaris, Tours & Travel Planning', '/services/consulting': 'Business Consulting & Strategy', '/services/business-support': 'Business Development Support', '/services/digital-training': 'Digital Skills & Business Training', '/learning': 'Entrepreneurship & Business Training', '/events': 'Events & Community', '/contact': 'Contact & Custom Software Quotes', '/legal': 'Legal information' }; const descriptions = { '/': 'Wabwire Global Innovations builds websites, mobile apps, custom software, POS and management systems, and AI integrations in Kenya and worldwide. We also offer social media marketing, safaris, tours and practical business skills learning.', '/about': 'Meet Wabwire Global Innovations, a Kenyan company building websites, apps and business software, supporting social media marketing, entrepreneurship and travel.', '/services': 'Explore website and software development, social media marketing, branding, business development, Kenyan safaris and travel services from Wabwire Global Innovations.', '/services/web-development': 'Get a website, mobile app, management system, POS platform or AI integration built around the way your business works. Request a custom software quote.', '/services/social-media': 'Social media marketing and management, content planning and digital campaigns for businesses from Wabwire Global Innovations.', '/services/tourism': 'Plan Kenya safaris, local tours and international trips with Wabwire Global Innovations travel planning and support.', '/learning': 'Build practical skills in entrepreneurship, digital skills, social media marketing, sales, leadership and personal development.', '/contact': 'Contact Wabwire Global Innovations for website design, custom software development, mobile apps, POS and management systems, AI integration, social media marketing, Kenya safari and travel enquiries.' }; const detail = pathname.split('/').filter(Boolean).at(-1)?.replaceAll('-', ' '); const title = `${names[pathname] || (detail ? detail.replace(/\b\w/g, char => char.toUpperCase()) : 'Wabwire')} | Wabwire Global Innovations`; const description = descriptions[pathname] || 'Websites, custom software, digital marketing, business development and thoughtful travel planning from Wabwire Global Innovations in Kenya.'; document.title = title; let meta = document.querySelector('meta[name="description"]'); if (meta) meta.content = description; let canonical = document.querySelector('link[rel="canonical"]'); if (canonical) canonical.href = `${base}${pathname === '/' ? '/' : pathname}`; let ogTitle = document.querySelector('meta[property="og:title"]'); if (ogTitle) ogTitle.content = title; let ogDescription = document.querySelector('meta[property="og:description"]'); if (ogDescription) ogDescription.content = description; let ogUrl = document.querySelector('meta[property="og:url"]'); if (ogUrl) ogUrl.content = `${base}${pathname === '/' ? '/' : pathname}`; }, [pathname]); return null }
 function NotFound() { return <main className="not-found"><span>404</span><h1>That page isn’t here.</h1><p>Use the navigation to explore Wabwire Global Innovations.</p><a href="/">Return home</a></main> }
 
 export default function App() {
-  const { pathname } = useLocation(); const { user } = useAuth()
+  const location = useLocation(); const { pathname } = location; const { user } = useAuth(); const reduceMotion = useReducedMotion()
   const isPortal = pathname.startsWith('/dashboard') || pathname.startsWith('/admin')
   const isAuthPage = ['/login','/register','/payment','/verify-email','/forgot-password','/reset-password'].includes(pathname)
-  return <><ScrollToTop/><PageMetadata/>{!isPortal&&!isAuthPage&&<Navbar/>}<main><Suspense fallback={<div className="page-loading" role="status" aria-label="Loading page"><span /></div>}><Routes>
+  return <><ScrollToTop/><PageMetadata/>{!isPortal&&!isAuthPage&&<Navbar/>}<main><Suspense fallback={<div className="page-loading" role="status" aria-label="Loading digital experience"><div className="loading-orbit" aria-hidden="true"><span/><span/><i/></div><p>Preparing your digital experience</p></div>}><AnimatePresence mode="wait" initial={false}><motion.div key={pathname} className="route-transition" initial={{ opacity: 0, y: reduceMotion ? 0 : 18, filter: reduceMotion ? 'none' : 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: reduceMotion ? 0 : -10, filter: reduceMotion ? 'none' : 'blur(2px)' }} transition={{ duration: reduceMotion ? 0 : 0.32, ease: [0.22, 1, 0.36, 1] }}><ScrollReveal pathname={pathname}/><Routes location={location}>
     <Route path="/" element={<Home/>}/><Route path="/about" element={<About/>}/><Route path="/about/company" element={<About/>}/>
     <Route path="/about/founders" element={<About/>}/><Route path="/about/leadership" element={<About/>}/><Route path="/about/partners" element={<ContentPending type="partners"/>}/><Route path="/about/registration" element={<ContentPending type="registration"/>}/>
     <Route path="/services" element={<Services/>}/><Route path="/services/web-development" element={<ServiceDetail/>}/><Route path="/services/social-media" element={<ServiceDetail/>}/><Route path="/services/graphic-design" element={<ServiceDetail/>}/><Route path="/services/consulting" element={<ServiceDetail/>}/><Route path="/services/business-support" element={<ServiceDetail/>}/><Route path="/services/retainers" element={<ServiceDetail/>}/><Route path="/services/digital-training" element={<Learning/>}/><Route path="/services/tourism" element={<ServiceDetail/>}/>
     <Route path="/tours" element={<Navigate to="/services/tourism" replace/>}/><Route path="/tours/destinations" element={<Navigate to="/services/tourism" replace/>}/><Route path="/tours/packages" element={<Navigate to="/services/tourism" replace/>}/><Route path="/learning" element={<Learning/>}/><Route path="/courses" element={<Learning/>}/><Route path="/events" element={<Events/>}/><Route path="/community" element={<ContentPending type="community"/>}/><Route path="/testimonials" element={<ContentPending type="testimonials"/>}/><Route path="/contact" element={<Contact/>}/><Route path="/legal" element={<Legal/>}/><Route path="/legal/*" element={<Legal/>}/><Route path="/platform" element={<PlatformInfo/>}/>
     <Route element={<RequireAuth/>}><Route path="/payment" element={<PaymentPage/>}/><Route element={<RequireMember/>}><Route path="/dashboard/*" element={<MemberPortal/>}/></Route><Route element={<RequireAdmin/>}><Route path="/admin/*" element={<AdminPortal/>}/></Route></Route>
     <Route path="/login" element={user?<Navigate to={memberHome(user)} replace/>:<LoginPage/>}/><Route path="/register" element={user?<Navigate to={memberHome(user)} replace/>:<RegisterPage/>}/><Route path="/verify-email" element={<VerifyEmailPage/>}/><Route path="/forgot-password" element={<ForgotPasswordPage/>}/><Route path="/reset-password" element={<ResetPasswordPage/>}/><Route path="*" element={<NotFound/>}/>
-  </Routes></Suspense></main>{!isPortal&&<Footer/>}<WhatsAppButton/></>
+  </Routes></motion.div></AnimatePresence></Suspense></main>{!isPortal&&<Footer/>}<WhatsAppButton/></>
 }

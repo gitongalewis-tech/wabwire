@@ -3,12 +3,16 @@ import mongoose from 'mongoose'
 const { Schema, model } = mongoose
 
 const userSchema = new Schema({
+  firstName: { type: String, trim: true, maxlength: 60 },
+  lastName: { type: String, trim: true, maxlength: 60 },
   fullName: { type: String, required: true, trim: true, maxlength: 120 },
   username: { type: String, required: true, trim: true, lowercase: true, minlength: 3, maxlength: 30, unique: true },
   email: { type: String, required: true, trim: true, lowercase: true, maxlength: 254, unique: true },
   phone: { type: String, trim: true, maxlength: 40 },
   country: { type: String, trim: true, default: 'Kenya', maxlength: 80 },
   county: { type: String, trim: true, maxlength: 80 },
+  dateOfBirth: Date,
+  idPassportNumber: { type: String, trim: true, maxlength: 40, select: false },
   passwordHash: { type: String, required: true, select: false },
   role: { type: String, enum: ['USER', 'ADMIN', 'SUPER_ADMIN', 'INSTRUCTOR', 'MODERATOR'], default: 'USER', index: true },
   isDemo: { type: Boolean, default: false, index: true },
@@ -22,7 +26,7 @@ const userSchema = new Schema({
   emailVerificationExpiresAt: { type: Date, select: false },
   passwordResetTokenHash: { type: String, select: false },
   passwordResetExpiresAt: { type: Date, select: false },
-  avatarUrl: { type: String, default: '' },
+  avatarUrl: { type: String, default: '', maxlength: 280000 },
   lastLoginAt: Date,
 }, { timestamps: true })
 userSchema.index({ createdAt: -1 })
