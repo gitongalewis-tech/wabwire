@@ -1,26 +1,19 @@
 # Wabwire Global Innovations
 
-Web platform for Wabwire Global Innovations. It includes public company and service pages, member and administration portals, an Express API, and MongoDB-backed membership, learning, referral, event, communications, and payment workflows.
+**Website:** [https://www.wabwireglobalinnovations.com](https://www.wabwireglobalinnovations.com)
 
-## Repository layout
+Wabwire Global Innovations Ltd is a Kenyan software and digital solutions company. This repository contains the public company website and member platform, the administration portal, and the API that supports accounts, enquiries, learning, events, referrals, email and payments.
 
-- `frontend/` — React and Vite application.
-- `backend/` — Express API and MongoDB integration.
-- `docs/CONTENT-SOURCE-NOTES.md` — mapping from supplied source documents to public pages.
-- `PROJECT_AUDIT.md` — implementation and endpoint review.
-- `resend.txt` — Resend setup guide.
-- `HOSTING_OPTIONS.md` — hosting comparison.
+## Project structure
 
-## Requirements
+- `frontend/` — React and Vite website, member experience, admin interface, SEO metadata, sitemap and robots rules.
+- `backend/` — Express API, MongoDB models, authentication, Resend email delivery and Daraja payment workflows.
+- `docs/` — current handover and security notes, plus supplied company source materials in `source-materials/`.
+- `frontend/public/images/` — website and email brand assets, including the About page founder portrait.
 
-- Node.js 20 or newer.
-- MongoDB Atlas or another MongoDB replica set. Payment approval uses MongoDB transactions.
+## Local development
 
-## Run locally
-
-Keep backend and frontend configuration in ignored local environment files or a secret manager. This repository intentionally contains no environment templates or credential values. Do not commit local environment files or paste secrets into source code, documentation, or frontend variables.
-
-Install and run the backend in one terminal:
+Requirements: Node.js 20 or newer and a MongoDB deployment that supports transactions. Configure private environment variables in ignored local env files or a secret manager. Do not commit credentials or production data.
 
 ```sh
 cd backend
@@ -28,7 +21,7 @@ npm ci
 npm run dev
 ```
 
-Install and run the frontend in a second terminal:
+In a second terminal:
 
 ```sh
 cd frontend
@@ -36,21 +29,18 @@ npm ci
 npm run dev
 ```
 
-The frontend runs at `http://localhost:5173`; the API runs at `http://localhost:4000/api/v1`. The API health endpoint is `/api/v1/health`. Configure the first administrator privately, then run `npm run seed:admin` from `backend/` if an administrator account needs to be created or reset.
+The Vite app is available at `http://localhost:5173`; the API runs at `http://localhost:4000/api/v1`. The API health route is `/api/v1/health`.
 
-For local review before payment configuration, the optional test membership bypass can be enabled in both local services. The backend disables that bypass in production. Registration and member dashboard access continue to follow email verification and membership rules.
+Build the frontend with `npm run build` from `frontend/`. Start the API with `npm start` from `backend/`.
 
-## Deployment
+## Production architecture
 
-The frontend and backend are separate Vercel projects:
+The public site is served at `https://www.wabwireglobalinnovations.com`. The React frontend and Express API are deployed as separate Vercel projects; the frontend proxies API requests to the backend so secure session cookies remain same-origin in the browser. Production secrets belong only in the backend Vercel project's encrypted environment settings.
 
-- Frontend: <https://frontend-gilt-eight-80.vercel.app>
-- Backend: <https://wabwire-backend.vercel.app>
+Email is sent by the backend through Resend using the verified Wabwire sending domain. Payment workflows use Safaricom Daraja; the current deployment is configured for sandbox testing. See [the payment handover](docs/MPESA-HANDOVER.md) for sandbox status, callback routes, required payout credentials and production cutover steps.
 
-Production browser requests use the frontend's same-origin API proxy. This lets browsers retain the secure authentication cookie across refreshes. The backend uses a daily scheduled job for communications. Configure database, authentication, payment, email, origin, and cron settings only in the backend's private deployment environment. Use a verified sending domain for Resend client email.
+## Handover status
 
-Deploy each project from its own directory with the Vercel CLI. Build the frontend with `npm run build` from `frontend/`; start the backend with `npm start` from `backend/`.
+The application code and deployed website/API are ready for operational handover. The remaining launch work is payment configuration and sign-off: complete the missing Daraja payout credentials and receiving-account details, validate callbacks end to end in sandbox, and only then enter approved production credentials. Do not enable production payouts before Safaricom approval and successful reconciliation tests.
 
-## Content notes
-
-Public service descriptions and indicative pricing follow the supplied Founder’s Blueprint and pricing guide. The supplied NDA, service agreement, and partnership agreement are drafts and are not presented as approved public policies. Company registration records and final legal wording should be supplied and approved before publication.
+See [the security review](docs/SECURITY-REVIEW.md) for safeguards and operational follow-ups. Supplied agreements and training/pricing PDFs are retained in `docs/source-materials/`; draft agreements are not approved public legal policies.

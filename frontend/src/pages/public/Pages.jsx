@@ -6,7 +6,7 @@ import { services, servicePrices, values } from '../../data/site.js'
 import { api, friendlyError } from '../../services/api.js'
 import { useGetEventsQuery } from '../../services/apiSlice.js'
 
-const founderImage = '/images/founders/brian-wabwire.jpeg'
+const founderImage = '/images/founders/brian-wabwire-about.jpg'
 const aboutImage = 'https://images.pexels.com/photos/38649010/pexels-photo-38649010.jpeg?auto=compress&cs=tinysrgb&w=1800'
 const servicesImage = 'https://images.pexels.com/photos/7689637/pexels-photo-7689637.jpeg?auto=compress&cs=tinysrgb&w=1800'
 const contactImage = 'https://images.pexels.com/photos/3184436/pexels-photo-3184436.jpeg?auto=compress&cs=tinysrgb&w=1800'
