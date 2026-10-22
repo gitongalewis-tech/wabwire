@@ -17,6 +17,8 @@
 
 ## Remaining sandbox payout credentials
 
+Manual Paybill entry is hidden until a Paybill number is configured. The deployed payment configuration currently returns no Paybill; add it through Admin → Settings or set `MPESA_PAYBILL` in Vercel if manual Paybill receipts should be offered.
+
 The account has STK credentials configured, but the backend currently has no B2C initiator credentials, so B2C transfers cannot be submitted yet. Add these as **Production** environment variables on the `wabwire-backend` Vercel project using the sandbox values from the Daraja B2C test credentials page:
 
 - `MPESA_INITIATOR_NAME`
