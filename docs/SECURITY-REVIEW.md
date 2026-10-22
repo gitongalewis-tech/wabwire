@@ -1,6 +1,6 @@
 # Security review and remediations
 
-Reviewed on **11 October 2026**. This is a source-code and dependency review,
+Reviewed on **22 October 2026**. This is a source-code and dependency review,
 not a penetration test or guarantee that every vulnerability has been found.
 
 ## Fixed in this review
