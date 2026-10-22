@@ -185,8 +185,8 @@ img {
   flex-shrink:0
 }
 .brand img {
-  width:44px;
-  height:44px;
+  width:50px;
+  height:50px;
   object-fit:cover;
   border-radius:50%;
   border:1px solid #d4a63a80
@@ -1864,8 +1864,8 @@ img {
     height:68px
   }
   .brand img {
-    width:39px;
-    height:39px
+    width:45px;
+    height:45px
   }
   .nav-actions {
     margin-left:auto
@@ -2083,8 +2083,8 @@ img {
     gap:8px
   }
   .brand img {
-    width:35px;
-    height:35px
+    width:40px;
+    height:40px
   }
   .brand-words b {
     font-size:12px
@@ -2941,6 +2941,26 @@ html, body { background: var(--paper); }
 .portal-stat, .portal-card, .portal-course, .portal-course-lessons button, .auth-card, .payment-method, .payment-history, .event-public-card, .certificate-card { background: #FBF7EF; }
 .certificate-card { outline-color: #FBF7EF; }
 .portal-form input, .portal-form select, .portal-form textarea, .portal-card input, .portal-card select, .portal-card textarea, .admin-filters input, .admin-filters select, .auth-form input { background: #FFFCF5; }
+
+.software-solution-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-top:2rem; }
+.software-solution-grid article { padding:26px; border:1px solid var(--line); border-radius:14px; background:#FBF7EF; }
+.software-solution-grid article>span { color:var(--gold); font-size:12px; font-weight:700; letter-spacing:.12em; }
+.software-solution-grid h3,.software-process h3,.software-faq h3 { margin:.8rem 0; font:700 21px Manrope,sans-serif; }
+.software-solution-grid p,.software-process li span,.software-faq details p { color:#637084; line-height:1.7; }
+.software-process,.software-faq { max-width:900px; margin:3rem auto 0; }
+.software-process ol { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; padding:0; list-style:none; counter-reset:software-step; }
+.software-process li { display:grid; gap:7px; padding:20px; border-left:2px solid var(--gold); background:#FBF7EF; counter-increment:software-step; }
+.software-process li b { font:700 16px Manrope,sans-serif; }
+.software-faq details { padding:17px 0; border-bottom:1px solid var(--line); }
+.software-faq summary { cursor:pointer; font-weight:700; }
+.software-faq details p { margin-bottom:0; }
+.request-reply { margin-top:1rem; gap:.65rem; }
+.request-reply textarea { width:100%; resize:vertical; border:1px solid var(--line); border-radius:8px; padding:12px; color:#162039; font:inherit; background:#fffcf5; }
+.request-reply-history { margin-top:.8rem; padding-top:.6rem; border-top:1px solid var(--line); }
+.request-reply-history summary { cursor:pointer; font-size:13px; font-weight:700; }
+.request-reply-history p { padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; white-space:pre-wrap; }
+.request-reply-history small { display:block; margin-top:5px; color:#637084; }
+@media(max-width:700px) { .software-solution-grid,.software-process ol { grid-template-columns:1fr; } .software-solution-grid article { padding:21px; } }
 
 /* Full-bleed cinematic hero treatment */
 .hero { position: relative; height: min(900px, 100svh); min-height: 690px; padding: 0; isolation: isolate; background: var(--navy); }

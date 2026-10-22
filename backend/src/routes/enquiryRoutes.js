@@ -5,7 +5,7 @@ import { enquiryRateLimit } from '../middleware/rateLimit.js'
 import { asyncRoute, parse } from '../utils/http.js'
 import { requireAuth, allowRoles } from '../middleware/auth.js'
 import { audit } from '../services/audit.js'
-import { sendEnquiryReceivedEmail } from '../services/email.js'
+import { sendEnquiryReceivedEmail, sendEnquiryReplyEmail } from '../services/email.js'
 
 const router = Router()
 const serviceOptions = ['Website development', 'Digital marketing', 'Branding & design', 'Travel planning', 'Training & business development', 'Consulting', 'Other']
@@ -28,6 +28,19 @@ router.patch('/admin/:id', requireAuth, allowRoles('ADMIN', 'SUPER_ADMIN'), asyn
   if (!enquiry) return res.status(404).json({ message: 'Enquiry not found.' })
   await audit(req, 'enquiry.status.update', 'Enquiry', enquiry.id, { status })
   res.json({ enquiry })
+}))
+
+router.post('/admin/:id/reply', requireAuth, allowRoles('ADMIN', 'SUPER_ADMIN'), asyncRoute(async (req, res) => {
+  const data = parse(z.object({ subject: z.string().trim().max(180).optional().default(''), message: z.string().trim().min(2).max(5000) }).strict(), req.body)
+  const enquiry = await Enquiry.findById(req.params.id)
+  if (!enquiry) return res.status(404).json({ message: 'Enquiry not found.' })
+  const subject = data.subject || `Reply about your ${enquiry.service} enquiry · Wabwire`
+  const delivery = await sendEnquiryReplyEmail(enquiry, req.user, data.message, subject)
+  enquiry.replies.push({ admin: req.user._id, subject, message: data.message, emailId: delivery.id, sentAt: new Date() })
+  enquiry.status = 'responded'
+  await enquiry.save()
+  await audit(req, 'enquiry.reply.send', 'Enquiry', enquiry.id, { subject, emailId: delivery.id })
+  res.json({ message: 'Your reply was sent to the enquirer.', emailId: delivery.id, enquiry })
 }))
 
 router.post('/', enquiryRateLimit, async (req, res, next) => {

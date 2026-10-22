@@ -40,7 +40,7 @@ export function Navbar() {
   }, [])
   return <header className={`navbar ${scrolled ? 'navbar--scrolled' : ''}`}>
     <div className="nav-wrap">
-      <Link className="brand" to="/" aria-label="Wabwire Global Innovations home"><img src="/images/brand/logo-mark.jpg" alt="" /><span className="brand-words"><b>WABWIRE</b><small>GLOBAL INNOVATIONS LTD</small></span></Link>
+      <Link className="brand" to="/" aria-label="Wabwire Global Innovations home"><img src="/images/brand/logo-mark.jpg" alt="Wabwire Global Innovations company logo" /><span className="brand-words"><b>WABWIRE</b><small>GLOBAL INNOVATIONS LTD</small></span></Link>
       <nav className={`nav-links ${open ? 'nav-links--open' : ''}`} aria-label="Main navigation">
         {navItems.map(([label, path]) => <NavLink key={path} to={path}>{label}</NavLink>)}
       </nav>
@@ -53,7 +53,7 @@ export function Navbar() {
 export function Footer() {
   return <footer className="footer">
     <div className="footer-top container">
-      <div className="footer-brand"><Link to="/" className="brand"><img src="/images/brand/logo-mark.jpg" alt="" /><span className="brand-words"><b>WABWIRE</b><small>GLOBAL INNOVATIONS LTD</small></span></Link><p>Innovative. Professional. Future-focused.</p><p className="footer-mission">Technology, knowledge and thoughtful service for people and businesses moving forward.</p></div>
+      <div className="footer-brand"><Link to="/" className="brand" aria-label="Wabwire Global Innovations home"><img src="/images/brand/logo-mark.jpg" alt="Wabwire Global Innovations company logo" /><span className="brand-words"><b>WABWIRE</b><small>GLOBAL INNOVATIONS LTD</small></span></Link><p>Innovative. Professional. Future-focused.</p><p className="footer-mission">Technology, knowledge and thoughtful service for people and businesses moving forward.</p></div>
       <div><h4>Explore</h4><Link to="/about">About Wabwire</Link><Link to="/services">Our services</Link><Link to="/learning">Learning & development</Link><Link to="/events">Events</Link></div>
       <div><h4>Services</h4><Link to="/services/web-development">Technology & digital</Link><Link to="/services/social-media">Digital marketing</Link><Link to="/services/tourism">Travel & lifestyle</Link><Link to="/services/graphic-design">Branding & design</Link></div>
       <div><h4>Members</h4><Link to="/login">Member login</Link><Link to="/register">Register</Link><Link to="/learning">Learning</Link><Link to="/events">Events</Link></div>

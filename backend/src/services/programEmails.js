@@ -12,7 +12,7 @@ async function saveProgramCampaign(program, admin, type, purpose, scheduledAt) {
   const body = `${purpose === 'reminder' ? 'This is a reminder about an upcoming Wabwire programme.' : 'A new Wabwire programme has been scheduled.'}\n\n${title}\n${program.description || ''}\nDate: ${date}\n${program.location ? `Location: ${program.location}\n` : ''}${program.meetingUrl ? `Join: ${program.meetingUrl}\n` : ''}Details: ${publicUrl()}${detailPath}`
   const filter = { sourceType: type, sourceId: program._id, purpose }
   const campaign = await EmailCampaign.findOneAndUpdate(filter, {
-    $set: { title: heading.slice(0, 180), subject: heading.slice(0, 200), body: body.slice(0, 10000), sendInApp: true, sendEmail: Boolean(process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY), scheduledAt, status: 'SCHEDULED', failureMessage: '', createdBy: admin._id },
+    $set: { title: heading.slice(0, 180), subject: heading.slice(0, 200), body: body.slice(0, 10000), audienceType: type === 'class' && program.course ? 'course-enrollees' : 'active-members', audienceId: type === 'class' && program.course ? program.course._id || program.course : undefined, sendInApp: true, sendEmail: Boolean(process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY), scheduledAt, status: 'SCHEDULED', failureMessage: '', createdBy: admin._id },
     $setOnInsert: filter,
   }, { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true })
   return campaign

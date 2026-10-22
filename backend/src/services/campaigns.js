@@ -1,9 +1,23 @@
-import { EmailCampaign, Notification, User } from '../models/index.js'
-import { sendEmail } from './email.js'
+import { ClassSession, EmailCampaign, Enrollment, EventRegistration, Notification, User } from '../models/index.js'
+import { sendCampaignEmail } from './email.js'
 
 async function deliverEmail(user, campaign) {
-  const result = await sendEmail({ to: user.email, subject: campaign.subject, text: campaign.body })
-  if (!result.sent) throw new Error(result.reason)
+  await sendCampaignEmail(user, campaign)
+}
+
+async function campaignRecipients(campaign) {
+  let ids
+  if (campaign.audienceType === 'course-enrollees') {
+    ids = await Enrollment.distinct('user', { course: campaign.audienceId })
+  } else if (campaign.audienceType === 'event-registrants') {
+    ids = await EventRegistration.distinct('user', { event: campaign.audienceId, status: { $in: ['REGISTERED', 'ATTENDED'] } })
+  } else if (campaign.sourceType === 'class' && campaign.sourceId) {
+    const session = await ClassSession.findById(campaign.sourceId).select('course')
+    if (session?.course) ids = await Enrollment.distinct('user', { course: session.course })
+  }
+  const filter = { status: 'ACTIVE', membershipStatus: 'ACTIVE', email: { $type: 'string', $ne: '' } }
+  if (ids) filter._id = { $in: ids }
+  return User.find(filter).select('_id email fullName').sort({ _id: 1 })
 }
 
 export async function dispatchCampaign(campaignId) {
@@ -13,7 +27,7 @@ export async function dispatchCampaign(campaignId) {
     { new: true },
   )
   if (!campaign) return
-  const recipients = await User.find({ status: 'ACTIVE', membershipStatus: 'ACTIVE' }).select('_id email')
+  const recipients = await campaignRecipients(campaign)
   campaign.recipients = recipients.length
   if (campaign.sendInApp && recipients.length) {
     await Notification.insertMany(recipients.map(user => ({ user: user._id, title: campaign.title, message: campaign.body, type: 'announcement', link: '/dashboard/notifications' })), { ordered: false })

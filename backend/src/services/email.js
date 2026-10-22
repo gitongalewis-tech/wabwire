@@ -1,35 +1,44 @@
 import { Resend } from 'resend'
 
+const BRAND = 'Wabwire Global Innovations'
+const COMPANY_DOMAIN = 'wabwireglobalinnovations.com'
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character])
-const siteUrl = () => (process.env.PUBLIC_SITE_URL || 'http://localhost:5173').replace(/\/$/, '')
+const siteUrl = () => (process.env.PUBLIC_SITE_URL || (process.env.NODE_ENV === 'production' ? 'https://www.wabwireglobalinnovations.com' : 'http://localhost:5173')).replace(/\/$/, '')
+const replyTo = () => process.env.EMAIL_REPLY_TO || `info@${COMPANY_DOMAIN}`
 let resend
 
 function client() {
   const key = process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY
-  if (!key) return null
+  if (!key) throw new Error('Resend is not configured. Set EMAIL_API_KEY in the backend environment.')
   if (!resend) resend = new Resend(key)
   return resend
 }
 
-export async function sendEmail({ to, subject, html, text }) {
+function template(title, body, actionLabel = '', actionUrl = '', footer = '') {
+  const action = actionUrl ? `<p style="margin:28px 0"><a href="${escapeHtml(actionUrl)}" style="display:inline-block;background:#b08030;color:#fffaf0;padding:14px 20px;text-decoration:none;border-radius:6px;font-weight:700">${escapeHtml(actionLabel)}</a></p><p style="font-size:14px;color:#637084">If the button does not work, copy this link into your browser:<br><a style="color:#75531f" href="${escapeHtml(actionUrl)}">${escapeHtml(actionUrl)}</a></p>` : ''
+  const logo = `${siteUrl()}/images/brand/logo-lockup.jpg`
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="light"><title>${escapeHtml(title)} | ${BRAND}</title></head><body style="margin:0;background:#f5efe2;font-family:Arial,Helvetica,sans-serif;color:#071a38"><div style="display:none;max-height:0;overflow:hidden">${escapeHtml(title)} from ${BRAND}</div><main style="max-width:600px;margin:24px auto;padding:0 14px"><div style="background:#071a38;padding:20px 26px;border-radius:12px 12px 0 0"><img src="${escapeHtml(logo)}" alt="${BRAND}" width="132" style="display:block;width:132px;max-width:100%;height:auto;border:0"></div><section style="padding:30px 28px;background:#fffdf8;border:1px solid #e5d9c5;border-top:0;border-radius:0 0 12px 12px"><p style="margin:0 0 9px;color:#9a6d22;font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase">${BRAND}</p><h1 style="margin:0 0 18px;font-size:25px;line-height:1.3;color:#071a38">${escapeHtml(title)}</h1><div style="font-size:16px;line-height:1.7;color:#26334b">${body}</div>${action}${footer ? `<p style="margin-top:25px;color:#637084;font-size:13px;line-height:1.6">${escapeHtml(footer)}</p>` : ''}<div style="margin-top:28px;padding-top:16px;border-top:1px solid #e5d9c5;color:#637084;font-size:12px;line-height:1.6"><strong style="color:#071a38">${BRAND}</strong><br><a style="color:#75531f" href="mailto:${replyTo()}">${replyTo()}</a> · <a style="color:#75531f" href="${siteUrl()}">wabwireglobalinnovations.com</a></div></section></main></body></html>`
+}
+
+export async function sendEmail({ to, subject, html, text, replyTo: messageReplyTo }) {
   const provider = client()
-  const from = process.env.EMAIL_FROM || (process.env.NODE_ENV === 'production' ? '' : 'Wabwire Global Innovations <onboarding@resend.dev>')
-  if (!provider) return { sent: false, reason: 'Email provider is not configured.' }
-  if (!from) return { sent: false, reason: 'Production sender is not configured. Set EMAIL_FROM to an address on a verified Resend domain.' }
-  if (!to || !subject || (!html && !text)) return { sent: false, reason: 'Email message is incomplete.' }
-  const { data, error } = await provider.emails.send({ from, to: Array.isArray(to) ? to : [to], subject, html, text })
+  const from = process.env.EMAIL_FROM || (process.env.NODE_ENV === 'production' ? '' : `${BRAND} <onboarding@resend.dev>`)
+  if (!from) throw new Error('Production sender is not configured. Set EMAIL_FROM to an address on a verified Resend domain.')
+  if (process.env.NODE_ENV === 'production' && !new RegExp(`@${COMPANY_DOMAIN.replaceAll('.', '\\.')}(?:>|$)`, 'i').test(from)) throw new Error(`Production email sender must use the verified ${COMPANY_DOMAIN} domain.`)
+  if (!to || !subject || subject.length > 200 || /[\r\n]/.test(subject) || (!html && !text)) throw new Error('Email message is incomplete or invalid.')
+  const testMode = process.env.EMAIL_TEST_MODE === 'true'
+  const finalSubject = testMode ? `[TEST DELIVERY] ${subject}` : subject
+  const testNotice = '<div style="margin:0 auto 16px;max-width:600px;padding:12px 16px;background:#fff1cf;border:1px solid #b08030;color:#513b16;font:14px Arial,sans-serif">Test message for email setup review. Any links or payment details shown are examples.</div>'
+  const finalHtml = testMode && html ? html.replace(/<body([^>]*)>/i, `<body$1>${testNotice}`) : html
+  const finalText = testMode ? `TEST DELIVERY — sample message; links and details are examples.\n\n${text || ''}` : text
+  const { data, error } = await provider.emails.send({ from, to: Array.isArray(to) ? to : [to], subject: finalSubject, html: finalHtml, text: finalText, replyTo: messageReplyTo || replyTo() })
   if (error) throw new Error(`Email provider rejected the message: ${error.message}`)
   return { sent: true, id: data?.id }
 }
 
-function template(title, body, actionLabel, actionUrl, footer = '') {
-  const action = actionUrl ? `<p style="margin:28px 0"><a href="${escapeHtml(actionUrl)}" style="display:inline-block;background:#b58a2a;color:#fff;padding:14px 20px;text-decoration:none;border-radius:6px;font-weight:700">${escapeHtml(actionLabel)}</a></p><p>If the button does not work, copy this link into your browser:<br><a href="${escapeHtml(actionUrl)}">${escapeHtml(actionUrl)}</a></p>` : ''
-  return `<!doctype html><html><body style="margin:0;background:#f4f2ec;font-family:Arial,sans-serif;color:#162039"><main style="max-width:600px;margin:28px auto;padding:34px;background:#fff;border-radius:12px"><p style="color:#b58a2a;font-weight:700;letter-spacing:.12em">WABWIRE GLOBAL INNOVATIONS</p><h1 style="font-size:25px">${escapeHtml(title)}</h1><div style="font-size:16px;line-height:1.7">${body}</div>${action}${footer ? `<p style="color:#70798a;font-size:13px">${escapeHtml(footer)}</p>` : ''}<p style="border-top:1px solid #e5e7eb;padding-top:16px;color:#70798a;font-size:13px">Wabwire Global Innovations</p></main></body></html>`
-}
-
 export async function sendVerificationEmail(user, token) {
   const url = `${siteUrl()}/verify-email?token=${encodeURIComponent(token)}`
-  return sendEmail({ to: user.email, subject: 'Verify your Wabwire email address', html: template('Confirm your email', `<p>Hello ${escapeHtml(user.fullName)},</p><p>Confirm your email address to finish setting up your Wabwire account.</p>`, 'Verify email address', url, 'This link expires in 24 hours. If you did not create this account, you can ignore this message.'), text: `Hello ${user.fullName}, verify your Wabwire account: ${url}\nThis link expires in 24 hours.` })
+  return sendEmail({ to: user.email, subject: 'Verify your email to finish creating your Wabwire account', html: template('Confirm your email address', `<p>Hello ${escapeHtml(user.fullName)},</p><p>Thanks for registering with Wabwire. Confirm this email address to finish setting up your account.</p><p>This verification link expires in 24 hours.</p>` , 'Verify my email', url, 'If you did not create this account, you can ignore this email.'), text: `Hello ${user.fullName},\n\nThanks for registering with Wabwire. Confirm your email address to finish setting up your account:\n${url}\n\nThis link expires in 24 hours. If you did not create this account, ignore this email.` })
 }
 
 export async function sendPasswordResetEmail(user, token) {
@@ -38,15 +47,21 @@ export async function sendPasswordResetEmail(user, token) {
 }
 
 export async function sendWelcomeEmail(user) {
-  return sendEmail({ to: user.email, subject: 'Welcome to Wabwire Global Innovations', html: template('Welcome to Wabwire', `<p>Hello ${escapeHtml(user.fullName)},</p><p>Your email is confirmed and your Wabwire account is ready. You can now continue with membership activation and explore learning, business and community opportunities.</p>`, 'Sign in to Wabwire', `${siteUrl()}/login`), text: `Welcome to Wabwire, ${user.fullName}. Your email is confirmed. Sign in at ${siteUrl()}/login` })
+  const login = `${siteUrl()}/login`
+  return sendEmail({ to: user.email, subject: 'Thanks for joining Wabwire Global Innovations', html: template('Welcome to Wabwire', `<p>Hello ${escapeHtml(user.fullName)},</p><p>Thanks for joining Wabwire Global Innovations. Your email address is confirmed and your account is ready.</p><p>You can now sign in to explore learning, events and member services. Membership access activates after payment is verified.</p>`, 'Sign in to Wabwire', login), text: `Hello ${user.fullName},\n\nThanks for joining Wabwire Global Innovations. Your email is confirmed and your account is ready. Membership access activates after payment is verified.\n\nSign in: ${login}` })
 }
 
 export async function sendReferralEmail(referrer, newMember) {
-  return sendEmail({ to: referrer.email, subject: 'Someone joined Wabwire using your referral link', html: template('A new person joined your network', `<p>Hello ${escapeHtml(referrer.fullName)},</p><p><strong>${escapeHtml(newMember.fullName)}</strong> created a Wabwire account using your referral link. Their membership will appear in your network once their account is verified.</p>`, 'View your network', `${siteUrl()}/dashboard/network`), text: `${newMember.fullName} joined Wabwire using your referral link. View your network: ${siteUrl()}/dashboard/network` })
+  const link = `${siteUrl()}/dashboard/network`
+  return sendEmail({ to: referrer.email, subject: 'A new member joined through your Wabwire referral', html: template('Someone joined your network', `<p>Hello ${escapeHtml(referrer.fullName)},</p><p><strong>${escapeHtml(newMember.fullName)}</strong> created a Wabwire account using your referral link. Their membership will appear in your network after email verification.</p>`, 'View your network', link), text: `${newMember.fullName} joined Wabwire using your referral link. View your network: ${link}` })
 }
 
 export async function sendPaymentConfirmedEmail(user, payment) {
-  return sendEmail({ to: user.email, subject: 'Wabwire membership payment confirmed', html: template('Payment received', `<p>Hello ${escapeHtml(user.fullName)},</p><p>Your membership payment of <strong>KES ${Number(payment.amount).toLocaleString('en-KE')}</strong> has been verified. Your member access is now active.</p>${payment.mpesaReceiptNumber ? `<p>M-Pesa receipt: <strong>${escapeHtml(payment.mpesaReceiptNumber)}</strong></p>` : ''}`, 'Open your member dashboard', `${siteUrl()}/dashboard`), text: `Your Wabwire membership payment of KES ${Number(payment.amount).toLocaleString('en-KE')} was verified. Your member access is active.` })
+  const amount = Number(payment.amount).toLocaleString('en-KE')
+  const method = payment.method === 'MPESA_STK' ? 'M-Pesa STK Push' : 'M-Pesa Paybill'
+  const received = payment.transactionDate || payment.verifiedAt
+  const details = `<div style="margin:18px 0;padding:16px;background:#f5efe2;border-left:3px solid #b08030"><p style="margin:0 0 6px"><strong>Amount paid:</strong> KES ${escapeHtml(amount)}</p><p style="margin:0 0 6px"><strong>Payment method:</strong> ${method}</p>${payment.mpesaReceiptNumber ? `<p style="margin:0 0 6px"><strong>M-Pesa receipt:</strong> ${escapeHtml(payment.mpesaReceiptNumber)}</p>` : ''}${received ? `<p style="margin:0 0 6px"><strong>Date received:</strong> ${escapeHtml(new Date(received).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' }))}</p>` : ''}${payment.accountReference ? `<p style="margin:0"><strong>Account reference:</strong> ${escapeHtml(payment.accountReference)}</p>` : ''}</div>`
+  return sendEmail({ to: user.email, subject: `Payment received: KES ${amount} · Wabwire membership active`, html: template('Your payment has been received', `<p>Hello ${escapeHtml(user.fullName)},</p><p>We have verified your membership payment and activated your Wabwire member access.</p>${details}`, 'Open your member dashboard', `${siteUrl()}/dashboard`), text: `Hello ${user.fullName},\n\nYour Wabwire membership payment has been received and verified.\nAmount: KES ${amount}\nMethod: ${method}${payment.mpesaReceiptNumber ? `\nM-Pesa receipt: ${payment.mpesaReceiptNumber}` : ''}${received ? `\nDate received: ${new Date(received).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })}` : ''}${payment.accountReference ? `\nAccount reference: ${payment.accountReference}` : ''}\n\nMember dashboard: ${siteUrl()}/dashboard` })
 }
 
 export async function sendMembershipActivatedEmail(user) {
@@ -54,11 +69,30 @@ export async function sendMembershipActivatedEmail(user) {
 }
 
 export async function sendEnquiryReceivedEmail(enquiry) {
-  const body = `<p>Hello ${escapeHtml(enquiry.name)},</p><p>Thank you for contacting Wabwire Global Innovations about <strong>${escapeHtml(enquiry.service)}</strong>.</p><p>We have received your enquiry and a member of our team will contact you soon.</p><p style="padding:14px;background:#f7f5ef;border-left:3px solid #b58a2a">${escapeHtml(enquiry.message).replace(/\n/g, '<br>')}</p>`
-  return sendEmail({
-    to: enquiry.email,
-    subject: 'We received your enquiry · Wabwire Global Innovations',
-    html: template('Your enquiry is with us', body, 'Visit Wabwire', siteUrl(), 'This is an automatic confirmation. Please reply to this email if you need to add information.'),
-    text: `Hello ${enquiry.name}, thank you for contacting Wabwire Global Innovations about ${enquiry.service}. We have received your enquiry and our team will contact you soon.\n\nYour message: ${enquiry.message}`,
-  })
+  const body = `<p>Hello ${escapeHtml(enquiry.name)},</p><p>Thank you for contacting Wabwire Global Innovations about <strong>${escapeHtml(enquiry.service)}</strong>. We have received your enquiry and our team will follow up.</p><p style="padding:14px;background:#f5efe2;border-left:3px solid #b08030">${escapeHtml(enquiry.message).replace(/\n/g, '<br>')}</p>`
+  return sendEmail({ to: enquiry.email, subject: `We received your ${enquiry.service} enquiry · Wabwire`, html: template('Your enquiry is with us', body, 'Visit Wabwire', siteUrl(), 'This is an automatic confirmation. Reply to this email if you need to add information.'), text: `Hello ${enquiry.name}, thank you for contacting Wabwire Global Innovations about ${enquiry.service}. We received your enquiry and our team will follow up.\n\nYour message: ${enquiry.message}` })
+}
+
+export async function sendEnquiryReplyEmail(enquiry, admin, message, subject = '') {
+  const cleanSubject = subject.trim() || `Reply about your ${enquiry.service} enquiry · Wabwire`
+  return sendEmail({ to: enquiry.email, subject: cleanSubject, html: template('A reply from our team', `<p>Hello ${escapeHtml(enquiry.name)},</p><p>${escapeHtml(message).replace(/\n/g, '<br>')}</p><p style="padding:14px;background:#f5efe2;border-left:3px solid #b08030"><strong>Your original enquiry about ${escapeHtml(enquiry.service)}:</strong><br>${escapeHtml(enquiry.message).replace(/\n/g, '<br>')}</p><p>Regards,<br>${escapeHtml(admin.fullName)}<br>Wabwire Global Innovations</p>`), text: `Hello ${enquiry.name},\n\n${message}\n\nYour original enquiry about ${enquiry.service}:\n${enquiry.message}\n\nRegards,\n${admin.fullName}\nWabwire Global Innovations` })
+}
+
+export async function sendServiceRequestReplyEmail(request, admin, message, subject = '') {
+  const cleanSubject = subject.trim() || `Update about your ${request.service} request · Wabwire`
+  return sendEmail({ to: request.email, subject: cleanSubject, html: template('A reply from our team', `<p>Hello ${escapeHtml(request.name)},</p><p>${escapeHtml(message).replace(/\n/g, '<br>')}</p><p style="padding:14px;background:#f5efe2;border-left:3px solid #b08030"><strong>Your request:</strong><br>${escapeHtml(request.description).replace(/\n/g, '<br>')}</p><p>Regards,<br>${escapeHtml(admin.fullName)}<br>Wabwire Global Innovations</p>`), text: `Hello ${request.name},\n\n${message}\n\nYour request:\n${request.description}\n\nRegards,\n${admin.fullName}\nWabwire Global Innovations` })
+}
+
+export async function sendServiceRequestStatusEmail(request, status) {
+  const label = status.toLowerCase().replaceAll('_', ' ')
+  const explanation = request.adminNote ? `<p>${escapeHtml(request.adminNote).replace(/\n/g, '<br>')}</p>` : ''
+  return sendEmail({ to: request.email, subject: `Your Wabwire service request is ${label}`, html: template('Service request update', `<p>Hello ${escapeHtml(request.name)},</p><p>Your <strong>${escapeHtml(request.service)}</strong> request is now <strong>${escapeHtml(label)}</strong>.</p>${explanation}<p>Reply to this email if you have a question or need to add information.</p>`, 'View Wabwire', siteUrl()), text: `Hello ${request.name}, your ${request.service} request is now ${label}.${request.adminNote ? `\n\n${request.adminNote}` : ''}\n\nReply to this email if you have a question.` })
+}
+
+export async function sendCampaignEmail(user, campaign) {
+  const body = String(campaign.body || '')
+  const linkMatch = body.match(/(?:Details|Join):\s*(https:\/\/\S+)/i)
+  const link = linkMatch?.[1]?.replace(/[),.]+$/, '')
+  const paragraphs = escapeHtml(body).split(/\n{2,}/).map(part => `<p>${part.replace(/\n/g, '<br>')}</p>`).join('')
+  return sendEmail({ to: user.email, subject: campaign.subject, html: template(campaign.title, `<p>Hello ${escapeHtml(user.fullName)},</p>${paragraphs}`, link ? 'View programme details' : 'Open your member dashboard', link || `${siteUrl()}/dashboard`), text: `Hello ${user.fullName},\n\n${body}\n\nWabwire Global Innovations` })
 }

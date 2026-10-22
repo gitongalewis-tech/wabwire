@@ -32,7 +32,7 @@ router.patch('/events/admin/:id', requireAuth, admins, asyncRoute(async (req, re
   const event = await Event.findByIdAndUpdate(req.params.id, data, { new: true, runValidators: true })
   await audit(req, 'event.update', 'Event', event.id, data)
   const changed = Object.keys(data).some(key => String(previous[key] ?? '') !== String(data[key] ?? ''))
-  if (changed) await scheduleProgramEmails(event, req.user, 'event', event.status === 'PUBLISHED')
+  if (changed) await scheduleProgramEmails(event, req.user, 'event', previous.status !== 'PUBLISHED' && event.status === 'PUBLISHED')
   res.json({ event })
 }))
 router.post('/events/:id/register', requireAuth, asyncRoute(async (req, res) => { const event = await Event.findOne({ _id: req.params.id, status: 'PUBLISHED' }); if (!event) return res.status(404).json({ message: 'Event not found.' }); if (event.membersOnly && req.user.membershipStatus !== 'ACTIVE' && !testMembershipAccess) return res.status(403).json({ message: 'An active membership is required.' }); if (event.capacity && await EventRegistration.countDocuments({ event: event._id, status: 'REGISTERED' }) >= event.capacity) return res.status(409).json({ message: 'This event is full.' }); const registration = await EventRegistration.findOneAndUpdate({ event: event._id, user: req.user._id }, { $set: { status: 'REGISTERED' } }, { upsert: true, new: true }); res.status(201).json({ registration }) }))

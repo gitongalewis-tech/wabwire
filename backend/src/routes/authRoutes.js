@@ -36,7 +36,11 @@ const hashToken = token => createHash('sha256').update(token).digest('hex')
 const newToken = () => randomBytes(32).toString('hex')
 const deliver = async (...emails) => {
   const outcomes = await Promise.allSettled(emails.filter(Boolean))
-  for (const outcome of outcomes) if (outcome.status === 'rejected') console.error('Transactional email delivery failed:', outcome.reason?.message || 'Unknown provider error.')
+  return outcomes.map(outcome => {
+    if (outcome.status === 'fulfilled') return outcome.value
+    console.error('Transactional email delivery failed:', outcome.reason?.message || 'Unknown provider error.')
+    return { sent: false }
+  })
 }
 
 router.post('/register', asyncRoute(async (req, res) => {
@@ -94,8 +98,8 @@ router.post('/register', asyncRoute(async (req, res) => {
   } finally {
     await session.endSession()
   }
-  await deliver(sendVerificationEmail(user, verificationToken), referrer ? sendReferralEmail(referrer, user) : null)
-  res.status(201).json({ message: 'Account created. Check your email for a verification link before signing in.', verificationRequired: true, email: user.email, emailConfigured: Boolean(process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY) })
+  const [verification] = await deliver(sendVerificationEmail(user, verificationToken), referrer ? sendReferralEmail(referrer, user) : null)
+  res.status(201).json({ message: verification?.sent ? 'Account created. Check your email for a verification link before signing in.' : 'Account created, but we could not send the verification email. Use the resend link below or contact support.', verificationRequired: true, verificationEmailSent: Boolean(verification?.sent), email: user.email })
 }))
 
 router.post('/login', asyncRoute(async (req, res) => {
@@ -119,9 +123,9 @@ router.post('/verify-email', asyncRoute(async (req, res) => {
   user.emailVerificationTokenHash = undefined
   user.emailVerificationExpiresAt = undefined
   await user.save()
-  await deliver(sendWelcomeEmail(user))
+  const [welcome] = await deliver(sendWelcomeEmail(user))
   res.cookie('wabwire_token', issueToken(user), cookieOptions())
-  res.json({ message: 'Email verified. Your Wabwire account is ready.', user: publicUser(user) })
+  res.json({ message: 'Email verified. Your Wabwire account is ready.', welcomeEmailSent: Boolean(welcome?.sent), user: publicUser(user) })
 }))
 
 router.post('/verification/resend', asyncRoute(async (req, res) => {

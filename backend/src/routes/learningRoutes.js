@@ -49,7 +49,7 @@ router.patch('/classes/admin/:id', requireAuth, admins, asyncRoute(async (req, r
   const item = await ClassSession.findByIdAndUpdate(req.params.id, data, { new: true, runValidators: true })
   await audit(req, 'class.update', 'ClassSession', item.id, data)
   const changed = Object.keys(data).some(key => String(previous[key] ?? '') !== String(data[key] ?? ''))
-  await scheduleProgramEmails(item, req.user, 'class', item.isPublished && changed)
+  await scheduleProgramEmails(item, req.user, 'class', previous.isPublished !== true && item.isPublished && changed)
   res.json({ class: item })
 }))
 router.delete('/classes/admin/:id', requireAuth, admins, asyncRoute(async (req, res) => {

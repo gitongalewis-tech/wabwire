@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { allowRoles, requireAuth } from '../middleware/auth.js'
-import { EmailCampaign, EmailTemplate } from '../models/index.js'
+import { Course, EmailCampaign, EmailTemplate, Event } from '../models/index.js'
 import { audit } from '../services/audit.js'
 import { dispatchCampaign } from '../services/campaigns.js'
 import { asyncRoute, parse } from '../utils/http.js'
@@ -24,7 +24,9 @@ router.delete('/communications/templates/:id', requireAuth, admins, asyncRoute(a
 }))
 router.get('/communications/campaigns', requireAuth, admins, asyncRoute(async (_req, res) => res.json({ campaigns: await EmailCampaign.find().populate('createdBy', 'fullName').sort({ createdAt: -1 }).limit(100) })))
 router.post('/communications/campaigns', requireAuth, admins, asyncRoute(async (req, res) => {
-  const data = parse(z.object({ title: z.string().trim().min(3).max(180), subject: z.string().trim().min(2).max(200), body: z.string().trim().min(2).max(10000), sendInApp: z.boolean().default(true), sendEmail: z.boolean().default(false), scheduledAt: z.coerce.date().optional() }).refine(value => value.sendInApp || value.sendEmail, { message: 'Choose in-app or email delivery.' }), req.body)
+  const data = parse(z.object({ title: z.string().trim().min(3).max(180), subject: z.string().trim().min(2).max(200), body: z.string().trim().min(2).max(10000), audienceType: z.enum(['active-members', 'course-enrollees', 'event-registrants']).default('active-members'), audienceId: z.string().regex(/^[a-f\d]{24}$/i).optional(), sendInApp: z.boolean().default(true), sendEmail: z.boolean().default(false), scheduledAt: z.coerce.date().optional() }).superRefine((value, ctx) => { if (!value.sendInApp && !value.sendEmail) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Choose in-app or email delivery.' }); if (value.audienceType !== 'active-members' && !value.audienceId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['audienceId'], message: 'Choose the course or event for this audience.' }) }), req.body)
+  if (data.audienceType === 'course-enrollees' && !await Course.exists({ _id: data.audienceId })) return res.status(404).json({ message: 'Course not found.' })
+  if (data.audienceType === 'event-registrants' && !await Event.exists({ _id: data.audienceId })) return res.status(404).json({ message: 'Event not found.' })
   if (data.sendEmail && !(process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY)) return res.status(503).json({ message: 'Email delivery is not configured. Add EMAIL_API_KEY to the backend environment.' })
   if (data.scheduledAt && data.scheduledAt <= new Date()) return res.status(400).json({ message: 'Choose a future time, or send the announcement now.' })
   const campaign = await EmailCampaign.create({ ...data, scheduledAt: data.scheduledAt || new Date(), createdBy: req.user._id })
